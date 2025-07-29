@@ -68,8 +68,28 @@ class Favorites(TypedTable):
     user_id: int
 
 
+class Transactions(TypedTable):
+    __table__ = "transactions"
+
+    id: int
+    wallet_address: str
+    type: str
+    timestamp: int
+    received_token_ca: Optional[str]
+    received_token_marketcap: Optional[float]
+    received_token_price: Optional[float]
+    received_token_quantity: Optional[float]
+    received_token_symbol: Optional[str]
+    spent_token_ca: Optional[str]
+    spent_token_marketcap: Optional[float]
+    spent_token_price: Optional[float]
+    spent_token_quantity: Optional[float]
+    spent_token_symbol: Optional[str]
+
+
 users = Users()
 articles = Articles()
 tags = Tags()
 articles_to_tags = ArticlesToTags()
 favorites = Favorites()
+transactions = Transactions()

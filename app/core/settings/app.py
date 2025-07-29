@@ -32,6 +32,8 @@ class AppSettings(BaseAppSettings):
 
     logging_level: int = logging.INFO
     loggers: Tuple[str, str] = ("uvicorn.asgi", "uvicorn.access")
+    solana_rpc_url: str
+    solana_ws_url: str
 
     class Config:
         validate_assignment = True
