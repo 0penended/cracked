@@ -5,21 +5,30 @@ from typing import Set
 from hyperliquid.info import Info
 from hyperliquid.utils import constants
 
-from app.models.domain.blockchain import ChainListener, UnifiedTransactionEvent
+from app.models.domain.blockchain import ChainListener
 from app.services.pipeline import CoreTransactionPipeline
+from app.clients.CoinMarketCapClient import CoinMarketCapClient
+from app.services.HyperliquidTransactionFetcher import HyperliquidTransactionFetcher
 
 
 class HyperliquidListener(ChainListener):
     """Hyperliquid blockchain listener using the official SDK."""
 
-    def __init__(self, pipeline: CoreTransactionPipeline):
+    def __init__(
+        self,
+        pipeline: CoreTransactionPipeline,
+        transaction_fetcher: HyperliquidTransactionFetcher,
+    ):
         self.pipeline = pipeline
+        self.transaction_fetcher = transaction_fetcher
         self.addresses: Set[str] = set()
         self.info: Info = Info(constants.MAINNET_API_URL)  # Uses WS under the hood
+        self.loop = asyncio.get_event_loop()  # st
 
-    async def subscribe_wallet(self, address: str):
+    async def subscribe_wallets(self, addresses: list[str]):
         """Add a wallet address to be tracked."""
-        self.addresses.add(address.lower())
+        for addr in addresses:
+            self.addresses.add(addr)
 
     async def run(self):
         """Subscribe to userFills for each wallet and keep the loop alive."""
@@ -29,7 +38,9 @@ class HyperliquidListener(ChainListener):
             for addr in self.addresses:
                 self.info.subscribe(
                     {"type": "userFills", "user": addr},
-                    lambda msg, address=addr: asyncio.create_task(self._handle_fill(msg, address))
+                    lambda msg, address=addr: asyncio.run_coroutine_threadsafe(
+                        self._handle_fill(msg, address), self.loop
+                    ),
                 )
                 print(f"[Hyperliquid] Subscribed to userFills for {addr}")
 
@@ -42,23 +53,16 @@ class HyperliquidListener(ChainListener):
     async def _handle_fill(self, msg: dict, wallet: str):
         """Handle individual UserFill event."""
         try:
-            fill = msg.get("data")
-            if not fill:
-                return
+            # Use the transaction fetcher to parse and create the event
+            event = await self.transaction_fetcher.parse_and_create_event(msg, wallet)
 
-            event = UnifiedTransactionEvent(
-                chain="hyperliquid",
-                wallet=wallet,
-                tx_hash=fill.get("hash"),
-                timestamp=fill.get("timestamp", int(time.time() * 1000)),
-                symbol=fill.get("symbol"),
-                action="BUY" if fill.get("side") == "A" else "SELL",
-                amount=float(fill.get("sz", 0)),
-                price=float(fill.get("px", 0)),
-                metadata=fill
-            )
-
-            await self.pipeline.handle_event(event)
+            if event:
+                await self.pipeline.handle_event(event)
+            else:
+                print(f"[Hyperliquid] Failed to create event for {wallet}")
 
         except Exception as e:
             print(f"[Hyperliquid] Error handling fill for {wallet}: {e}")
+            import traceback
+
+            traceback.print_exc()

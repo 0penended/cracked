@@ -30,7 +30,6 @@ class UnifiedTransactionEvent:
 
     # Trade context
     action: Action
-    leverage: float  # 1.0 for spot trades, >1.0 for leverage
 
     # Asset acquired or traded
     recieved_symbol: str
