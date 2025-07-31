@@ -12,7 +12,7 @@ class Transaction(RWModel):
     txn_hash: str
     action: str
     timestamp: int
-    received_token_ca: Optional[str] = None
+    received_token_id: Optional[str] = None
     received_token_marketcap: Optional[float] = None
     received_token_price: Optional[float] = None
     received_token_quantity: Optional[float] = None
@@ -21,7 +21,7 @@ class Transaction(RWModel):
     received_token_price_change_h24: Optional[float] = None
     received_token_liquidity: Optional[float] = None
     received_token_created_at: Optional[int] = None
-    spent_token_ca: Optional[str] = None
+    spent_token_id: Optional[str] = None
     spent_token_marketcap: Optional[float] = None
     spent_token_price: Optional[float] = None
     spent_token_quantity: Optional[float] = None

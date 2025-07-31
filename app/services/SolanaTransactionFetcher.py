@@ -155,29 +155,32 @@ class SolanaTransactionFetcher:
         # Create the unified event
         event = UnifiedTransactionEvent(
             chain="solana",
-            wallet=wallet_address,
-            tx_hash=signature,
+            wallet_address=wallet_address,
+            txn_hash=signature,
             timestamp=int(time.time() * 1000),
             action=action,
-            leverage=1.0,  # Default to spot trading
-            recieved_symbol=received_symbol,
-            recieved_amount=received_token["amount"] if received_token else 0.0,
-            recieved_price=received_price,
-            recieved_volume_h24=received_volume,
-            recieved_price_change_h24=self._extract_price_change_24h(
+            recieved_token_id=received_token["mint"] if received_token else None,
+            recieved_token_symbol=received_symbol,
+            recieved_token_quantity=received_token["amount"] if received_token else 0.0,
+            recieved_token_price=received_price,
+            recieved_token_volume_h24=received_volume,
+            recieved_token_price_change_h24=self._extract_price_change_24h(
                 received_pair_data
             ),
-            recieved_liquidity=received_liquidity,
-            recieved_created_at=(
+            recieved_token_liquidity=received_liquidity,
+            recieved_token_created_at=(
                 received_pair_data.get("pairCreatedAt", 0) if received_pair_data else 0
             ),
-            spent_symbol=spent_symbol,
-            spent_amount=spent_token["amount"] if spent_token else 0.0,
-            spent_price=spent_price,
-            spent_volume_h24=spent_volume,
-            spent_price_change_h24=self._extract_price_change_24h(spent_pair_data),
-            spent_liquidity=spent_liquidity,
-            spent_created_at=(
+            spent_token_id=spent_token["mint"] if spent_token else None,
+            spent_token_symbol=spent_symbol,
+            spent_token_amount=spent_token["amount"] if spent_token else 0.0,
+            spent_token_price=spent_price,
+            spent_token_volume_h24=spent_volume,
+            spent_token_price_change_h24=self._extract_price_change_24h(
+                spent_pair_data
+            ),
+            spent_token_liquidity=spent_liquidity,
+            spent_token_created_at=(
                 spent_pair_data.get("pairCreatedAt", 0) if spent_pair_data else 0
             ),
         )
@@ -221,36 +224,36 @@ class SolanaTransactionFetcher:
             return 0.0
         return float(pair_data.get("liquidity", {}).get("usd", 0))
 
-    def _is_usdc(self, token_ca: str) -> bool:
+    def _is_usdc(self, token_id: str) -> bool:
         """Check if token is USDC."""
-        return token_ca == self.USDC_CA
+        return token_id == self.USDC_CA
 
-    def _is_sol(self, token_ca: str) -> bool:
+    def _is_sol(self, token_id: str) -> bool:
         """Check if token is SOL."""
-        return token_ca == self.SOL_CA
+        return token_id == self.SOL_CA
 
-    def _is_stable_coin(self, token_ca: str) -> bool:
+    def _is_stable_coin(self, token_id: str) -> bool:
         """Check if token is a stable coin (USDC or SOL)."""
-        return self._is_usdc(token_ca) or self._is_sol(token_ca)
+        return self._is_usdc(token_id) or self._is_sol(token_id)
 
-    def _get_transaction_type(self, received_token_ca: str, spent_token_ca: str) -> str:
+    def _get_transaction_type(self, received_token_id: str, spent_token_id: str) -> str:
         """Determine transaction type based on received and spent tokens."""
 
         # Special case: USDC ↔ SOL transactions
-        if self._is_usdc(received_token_ca) and self._is_sol(spent_token_ca):
+        if self._is_usdc(received_token_id) and self._is_sol(spent_token_id):
             return "SELL"  # Receiving USDC for SOL = selling SOL for USDC
-        if self._is_sol(received_token_ca) and self._is_usdc(spent_token_ca):
+        if self._is_sol(received_token_id) and self._is_usdc(spent_token_id):
             return "BUY"  # Receiving SOL for USDC = buying SOL with USDC
 
         # If received stable coin (USDC or SOL) and spent non-stable, it's a SELL
-        if self._is_stable_coin(received_token_ca) and not self._is_stable_coin(
-            spent_token_ca
+        if self._is_stable_coin(received_token_id) and not self._is_stable_coin(
+            spent_token_id
         ):
             return "SELL"
 
-        # If received non-stable and spent stable coin (USDC or SOL), it's a BUY
-        if not self._is_stable_coin(received_token_ca) and self._is_stable_coin(
-            spent_token_ca
+        # If spent stable coin (USDC or SOL) and received non-stable, it's a BUY
+        if not self._is_stable_coin(received_token_id) and self._is_stable_coin(
+            spent_token_id
         ):
             return "BUY"
 
