@@ -34,6 +34,8 @@ class AppSettings(BaseAppSettings):
     loggers: Tuple[str, str] = ("uvicorn.asgi", "uvicorn.access")
     solana_rpc_url: str
     solana_ws_url: str
+    coinmarketcap_api_key: str
+    coinmarketcap_base_url: str
 
     class Config:
         validate_assignment = True
