@@ -3,8 +3,11 @@ from typing import Dict, Any
 
 from app.core.settings.app import AppSettings
 from app.services.pipeline import CoreTransactionPipeline
-from app.services.listenerSolana import SolanaListener
+from app.services.SolanaListener import SolanaListener
+from app.services.SolanaTransactionFetcher import SolanaTransactionFetcher
 from app.services.listenerHyperliquid import HyperliquidListener
+from app.clients.DexScreenerClient import DexScreenerClient
+from app.models.domain.blockchain import UnifiedTransactionEvent
 from app.services.routers import (
     XGBoostModelHL,
     XGBoostModelSOL,
@@ -63,13 +66,18 @@ async def main():
         alert_router=TelegramAlertRouter(SolConfigs),
     )
 
-    print("!!!settings.solana_ws_url!!!", settings.solana_ws_url)
+    # Create DexScreener client
+    dex_screener_client = DexScreenerClient()
+    # Create Solana transaction fetcher
+    solana_transaction_fetcher = SolanaTransactionFetcher(
+        settings.solana_rpc_url, dex_screener_client
+    )
 
-    # Create listeners
+    # Create Solana listener
     solana_listener = SolanaListener(
-        pipeline=pipeline_solana,
-        rpc_url=settings.solana_rpc_url,
         ws_url=settings.solana_ws_url,
+        transaction_fetcher=solana_transaction_fetcher,
+        pipeline_handler=pipeline_solana,
     )
     # hyperliquid_listener = HyperliquidListener(pipeline_hyperliquid)
 

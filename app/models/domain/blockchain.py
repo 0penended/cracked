@@ -1,21 +1,54 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
+from enum import Enum
+
+
+class Action(str, Enum):
+    BUY = "BUY"
+    SELL = "SELL"
+    SWAP = "SWAP"
+    OPEN_LONG = "OPEN_LONG"
+    CLOSE_LONG = "CLOSE_LONG"
+    OPEN_SHORT = "OPEN_SHORT"
+    CLOSE_SHORT = "CLOSE_SHORT"
+    LIQUIDATION = "LIQUIDATION"
 
 
 @dataclass
 class UnifiedTransactionEvent:
-    """Unified transaction event that normalizes data from different blockchain sources."""
+    """
+    Unified transaction event that captures both spot and leveraged trades
+    in a normalized structure.
+    """
 
-    chain: str  # "solana", "hyperliquid", etc.
+    # Core identifiers
+    chain: str
     wallet: str
     tx_hash: str
     timestamp: int
-    symbol: Optional[str]
-    action: str  # "BUY", "SELL", "SWAP", etc.
-    amount: float
-    price: Optional[float] = None
-    metadata: Optional[Dict[str, Any]] = None  # chain-specific details if needed
+
+    # Trade context
+    action: Action
+    leverage: float  # 1.0 for spot trades, >1.0 for leverage
+
+    # Asset acquired or traded
+    recieved_symbol: str
+    recieved_amount: float
+    recieved_price: float  # USD price per unit
+    recieved_volume_h24: float
+    recieved_price_change_h24: float
+    recieved_liquidity: float
+    recieved_created_at: int
+
+    # Asset spent or received
+    spent_symbol: str
+    spent_amount: float
+    spent_price: float  # USD price per unit
+    spent_volume_h24: float
+    spent_price_change_h24: float
+    spent_liquidity: float
+    spent_created_at: int
 
 
 class ChainListener(ABC):
