@@ -31,7 +31,7 @@ class Transactions(TypedTable):
     txn_hash: str
     action: str
     timestamp: int
-    received_token_ca: Optional[str]
+    received_token_id: Optional[str]
     received_token_marketcap: Optional[float]
     received_token_price: Optional[float]
     received_token_quantity: Optional[float]
@@ -40,7 +40,7 @@ class Transactions(TypedTable):
     received_token_price_change_h24: Optional[float]
     received_token_liquidity: Optional[float]
     received_token_created_at: Optional[int]
-    spent_token_ca: Optional[str]
+    spent_token_id: Optional[str]
     spent_token_marketcap: Optional[float]
     spent_token_price: Optional[float]
     spent_token_quantity: Optional[float]

@@ -48,7 +48,7 @@ async def main():
     # Create Hyperliquid pipeline
     pipeline_hyperliquid = CoreTransactionPipeline(
         db_writer=db_writer,
-        model_routers=[XGBoostModelHL()],
+        model_routers=[],
         heuristic_routers=[
             VolumeRouter(threshold=10000),
             BatchedWalletTransactionRouter(batch_threshold=5, time_window=300),

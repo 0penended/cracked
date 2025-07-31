@@ -1,11 +1,11 @@
--- name: create-new-transaction<!
+-- name: create_new_transaction
 INSERT INTO transactions (
     wallet_address,
     chain,
     txn_hash,
     action,
     timestamp,
-    received_token_ca,
+    received_token_id,
     received_token_marketcap,
     received_token_price,
     received_token_quantity,
@@ -14,7 +14,7 @@ INSERT INTO transactions (
     received_token_price_change_h24,
     received_token_liquidity,
     received_token_created_at,
-    spent_token_ca,
+    spent_token_id,
     spent_token_marketcap,
     spent_token_price,
     spent_token_quantity,
@@ -23,14 +23,13 @@ INSERT INTO transactions (
     spent_token_price_change_h24,
     spent_token_liquidity,
     spent_token_created_at
-)
-VALUES (
+) VALUES (
     :wallet_address,
     :chain,
     :txn_hash,
     :action,
     :timestamp,
-    :received_token_ca,
+    :received_token_id,
     :received_token_marketcap,
     :received_token_price,
     :received_token_quantity,
@@ -39,7 +38,7 @@ VALUES (
     :received_token_price_change_h24,
     :received_token_liquidity,
     :received_token_created_at,
-    :spent_token_ca,
+    :spent_token_id,
     :spent_token_marketcap,
     :spent_token_price,
     :spent_token_quantity,
@@ -48,5 +47,4 @@ VALUES (
     :spent_token_price_change_h24,
     :spent_token_liquidity,
     :spent_token_created_at
-)
-RETURNING id;
+) RETURNING *;

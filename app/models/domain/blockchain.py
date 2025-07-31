@@ -24,14 +24,15 @@ class UnifiedTransactionEvent:
 
     # Core identifiers
     chain: str
-    wallet_address: str
-    txn_hash: str
+    wallet_address: str  # Changed from wallet to wallet_address
+    txn_hash: str  # Changed from tx_hash to txn_hash
     timestamp: int
 
     # Trade context
     action: Action
 
     # Asset acquired or traded
+    recieved_token_id: Optional[str] = None  # Contract address or token ID
     recieved_token_symbol: str
     recieved_token_quantity: float
     recieved_token_price: float  # USD price per unit
@@ -41,6 +42,7 @@ class UnifiedTransactionEvent:
     recieved_token_created_at: int
 
     # Asset spent or received
+    spent_token_id: Optional[str] = None  # Contract address or token ID
     spent_token_symbol: str
     spent_token_amount: float
     spent_token_price: float  # USD price per unit

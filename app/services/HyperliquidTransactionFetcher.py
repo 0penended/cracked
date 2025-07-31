@@ -209,24 +209,26 @@ class HyperliquidTransactionFetcher:
         # Create UnifiedTransactionEvent
         event = UnifiedTransactionEvent(
             chain=chain,
-            wallet=wallet,
-            tx_hash=tx_hash,
+            wallet_address=wallet,
+            txn_hash=tx_hash,
             timestamp=timestamp,
             action=action,
-            recieved_symbol=received_symbol,
-            recieved_amount=received_amount,
-            recieved_price=price if received_symbol != "USDC" else 1.0,
-            recieved_volume_h24=received_volume_h24,
-            recieved_price_change_h24=received_price_change_h24,
-            recieved_liquidity=received_liquidity,
-            recieved_created_at=received_created_at,
-            spent_symbol=spent_symbol,
-            spent_amount=spent_amount,
-            spent_price=price if spent_symbol != "USDC" else 1.0,
-            spent_volume_h24=spent_volume_h24,
-            spent_price_change_h24=spent_price_change_h24,
-            spent_liquidity=spent_liquidity,
-            spent_created_at=spent_created_at,
+            recieved_token_id=None,  # Hyperliquid doesn't provide contract addresses
+            recieved_token_symbol=received_symbol,
+            recieved_token_quantity=received_amount,
+            recieved_token_price=price if received_symbol != "USDC" else 1.0,
+            recieved_token_volume_h24=received_volume_h24,
+            recieved_token_price_change_h24=received_price_change_h24,
+            recieved_token_liquidity=received_liquidity,
+            recieved_token_created_at=received_created_at,
+            spent_token_id=None,  # Hyperliquid doesn't provide contract addresses
+            spent_token_symbol=spent_symbol,
+            spent_token_amount=spent_amount,
+            spent_token_price=price if spent_symbol != "USDC" else 1.0,
+            spent_token_volume_h24=spent_volume_h24,
+            spent_token_price_change_h24=spent_price_change_h24,
+            spent_token_liquidity=spent_liquidity,
+            spent_token_created_at=spent_created_at,
         )
 
         print(
