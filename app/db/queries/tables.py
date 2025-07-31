@@ -1,12 +1,6 @@
-from datetime import datetime
 from typing import Optional
 
-from pypika import Parameter as CommonParameter, Query, Table
-
-
-class Parameter(CommonParameter):
-    def __init__(self, count: int) -> None:
-        super().__init__("${0}".format(count))
+from pypika import Parameter as Query, Table
 
 
 class TypedTable(Table):
@@ -28,68 +22,33 @@ class TypedTable(Table):
         super().__init__(name, schema, alias, query_cls)
 
 
-class Users(TypedTable):
-    __table__ = "users"
-
-    id: int
-    username: str
-
-
-class Articles(TypedTable):
-    __table__ = "articles"
-
-    id: int
-    slug: str
-    title: str
-    description: str
-    body: str
-    author_id: int
-    created_at: datetime
-    updated_at: datetime
-
-
-class Tags(TypedTable):
-    __table__ = "tags"
-
-    tag: str
-
-
-class ArticlesToTags(TypedTable):
-    __table__ = "articles_to_tags"
-
-    article_id: int
-    tag: str
-
-
-class Favorites(TypedTable):
-    __table__ = "favorites"
-
-    article_id: int
-    user_id: int
-
-
 class Transactions(TypedTable):
     __table__ = "transactions"
 
     id: int
     wallet_address: str
-    type: str
+    chain: str
+    txn_hash: str
+    action: str
     timestamp: int
     received_token_ca: Optional[str]
     received_token_marketcap: Optional[float]
     received_token_price: Optional[float]
     received_token_quantity: Optional[float]
     received_token_symbol: Optional[str]
+    received_token_volume_h24: Optional[float]
+    received_token_price_change_h24: Optional[float]
+    received_token_liquidity: Optional[float]
+    received_token_created_at: Optional[int]
     spent_token_ca: Optional[str]
     spent_token_marketcap: Optional[float]
     spent_token_price: Optional[float]
     spent_token_quantity: Optional[float]
     spent_token_symbol: Optional[str]
+    spent_token_volume_h24: Optional[float]
+    spent_token_price_change_h24: Optional[float]
+    spent_token_liquidity: Optional[float]
+    spent_token_created_at: Optional[int]
 
 
-users = Users()
-articles = Articles()
-tags = Tags()
-articles_to_tags = ArticlesToTags()
-favorites = Favorites()
 transactions = Transactions()

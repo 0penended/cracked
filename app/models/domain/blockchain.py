@@ -24,30 +24,30 @@ class UnifiedTransactionEvent:
 
     # Core identifiers
     chain: str
-    wallet: str
-    tx_hash: str
+    wallet_address: str
+    txn_hash: str
     timestamp: int
 
     # Trade context
     action: Action
 
     # Asset acquired or traded
-    recieved_symbol: str
-    recieved_amount: float
-    recieved_price: float  # USD price per unit
-    recieved_volume_h24: float
-    recieved_price_change_h24: float
-    recieved_liquidity: float
-    recieved_created_at: int
+    recieved_token_symbol: str
+    recieved_token_quantity: float
+    recieved_token_price: float  # USD price per unit
+    recieved_token_volume_h24: float
+    recieved_token_price_change_h24: float
+    recieved_token_liquidity: float
+    recieved_token_created_at: int
 
     # Asset spent or received
-    spent_symbol: str
-    spent_amount: float
-    spent_price: float  # USD price per unit
-    spent_volume_h24: float
-    spent_price_change_h24: float
-    spent_liquidity: float
-    spent_created_at: int
+    spent_token_symbol: str
+    spent_token_amount: float
+    spent_token_price: float  # USD price per unit
+    spent_token_volume_h24: float
+    spent_token_price_change_h24: float
+    spent_token_liquidity: float
+    spent_token_created_at: int
 
 
 class ChainListener(ABC):
