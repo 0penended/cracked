@@ -1,32 +1,52 @@
 -- name: create-new-transaction<!
 INSERT INTO transactions (
     wallet_address,
-    type,
+    chain,
+    txn_hash,
+    action,
     timestamp,
     received_token_ca,
     received_token_marketcap,
     received_token_price,
     received_token_quantity,
     received_token_symbol,
+    received_token_volume_h24,
+    received_token_price_change_h24,
+    received_token_liquidity,
+    received_token_created_at,
     spent_token_ca,
     spent_token_marketcap,
     spent_token_price,
     spent_token_quantity,
-    spent_token_symbol
+    spent_token_symbol,
+    spent_token_volume_h24,
+    spent_token_price_change_h24,
+    spent_token_liquidity,
+    spent_token_created_at
 )
 VALUES (
     :wallet_address,
-    :type,
+    :chain,
+    :txn_hash,
+    :action,
     :timestamp,
     :received_token_ca,
     :received_token_marketcap,
     :received_token_price,
     :received_token_quantity,
     :received_token_symbol,
+    :received_token_volume_h24,
+    :received_token_price_change_h24,
+    :received_token_liquidity,
+    :received_token_created_at,
     :spent_token_ca,
     :spent_token_marketcap,
     :spent_token_price,
     :spent_token_quantity,
-    :spent_token_symbol
+    :spent_token_symbol,
+    :spent_token_volume_h24,
+    :spent_token_price_change_h24,
+    :spent_token_liquidity,
+    :spent_token_created_at
 )
 RETURNING id;
