@@ -1,12 +1,7 @@
 from typing import List
 from app.db.repositories.transactions import TransactionsRepository
-from app.models.domain.blockchain import (
-    UnifiedTransactionEvent, 
-    ModelRouter, 
-    HeuristicRouter, 
-    AlertRouter, 
-    AlertResult
-)
+from app.models.domain.blockchain import UnifiedTransactionEvent
+from app.services.routers.base import ModelRouter, HeuristicRouter, AlertRouter, AlertResult
 
 
 class CoreTransactionPipeline:

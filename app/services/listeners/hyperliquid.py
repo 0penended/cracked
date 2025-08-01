@@ -5,10 +5,10 @@ from typing import Set
 from hyperliquid.info import Info
 from hyperliquid.utils import constants
 
-from app.models.domain.blockchain import ChainListener
-from app.services.pipeline import CoreTransactionPipeline
+from app.services.listeners.base import ChainListener
+from app.services.pipeline.core import CoreTransactionPipeline
 from app.clients.CoinMarketCapClient import CoinMarketCapClient
-from app.services.HyperliquidTransactionFetcher import HyperliquidTransactionFetcher
+from app.services.fetchers.hyperliquid import HyperliquidTransactionFetcher
 
 
 class HyperliquidListener(ChainListener):

@@ -2,11 +2,11 @@ import asyncio
 from typing import Dict, Any
 
 from app.core.settings.app import AppSettings
-from app.services.pipeline import CoreTransactionPipeline
-from app.services.SolanaListener import SolanaListener
-from app.services.SolanaTransactionFetcher import SolanaTransactionFetcher
-from app.services.HyperliquidListener import HyperliquidListener
-from app.services.HyperliquidTransactionFetcher import HyperliquidTransactionFetcher
+from app.services.pipeline.core import CoreTransactionPipeline
+from app.services.listeners.solana import SolanaListener
+from app.services.fetchers.solana import SolanaTransactionFetcher
+from app.services.listeners.hyperliquid import HyperliquidListener
+from app.services.fetchers.hyperliquid import HyperliquidTransactionFetcher
 from app.clients.CoinMarketCapClient import CoinMarketCapClient
 from app.clients.DexScreenerClient import DexScreenerClient
 from app.models.domain.blockchain import UnifiedTransactionEvent
