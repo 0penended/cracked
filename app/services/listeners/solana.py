@@ -8,9 +8,9 @@ from solana.rpc.websocket_api import (
     RpcTransactionLogsFilterMentions,
 )
 
-from app.models.domain.blockchain import ChainListener
-from app.services.SolanaTransactionFetcher import SolanaTransactionFetcher
-from app.services.pipeline import CoreTransactionPipeline
+from app.services.listeners.base import ChainListener
+from app.services.fetchers.solana import SolanaTransactionFetcher
+from app.services.pipeline.core import CoreTransactionPipeline
 
 
 class SolanaListener(ChainListener):

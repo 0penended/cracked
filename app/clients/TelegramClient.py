@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from telegram import Bot
 from telegram.error import TelegramError
 
@@ -9,7 +10,15 @@ class TelegramClient:
         self.bot = Bot(token=bot_token)
 
     def send_message(self, message: str, chat_id: str, **kwargs) -> None:
+        """Synchronous method to send a message."""
         try:
             self.bot.send_message(chat_id=chat_id, text=message, **kwargs)
+        except TelegramError as e:
+            logging.error(f"Telegram message error: {e}")
+
+    async def send_message_async(self, message: str, chat_id: str, **kwargs) -> None:
+        """Asynchronous method to send a message."""
+        try:
+            await self.bot.send_message(chat_id=chat_id, text=message, **kwargs)
         except TelegramError as e:
             logging.error(f"Telegram message error: {e}")

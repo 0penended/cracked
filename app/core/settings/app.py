@@ -37,6 +37,10 @@ class AppSettings(BaseAppSettings):
     coinmarketcap_api_key: str
     coinmarketcap_base_url: str
 
+    # Telegram configuration
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
     class Config:
         validate_assignment = True
 

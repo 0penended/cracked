@@ -48,3 +48,6 @@ INSERT INTO transactions (
     :spent_token_liquidity,
     :spent_token_created_at
 ) RETURNING *;
+
+-- name: check_transaction_exists
+SELECT 1 FROM transactions WHERE txn_hash = :txn_hash LIMIT 1;

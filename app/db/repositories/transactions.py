@@ -88,7 +88,8 @@ class TransactionsRepository(BaseRepository):
                 spent_token_created_at=transaction.spent_token_created_at,
             )
 
-        return transaction.copy(update=dict(transaction_row))
+        # Just return the transaction object, no need to update with returned data
+        return transaction
 
     async def create_from_unified_event(
         self, event: UnifiedTransactionEvent
@@ -119,3 +120,14 @@ class TransactionsRepository(BaseRepository):
             spent_token_liquidity=event.spent_token_liquidity,
             spent_token_created_at=event.spent_token_created_at,
         )
+
+    async def transaction_exists(self, txn_hash: str) -> bool:
+        """Check if a transaction already exists in the database."""
+        try:
+            result = await queries.check_transaction_exists(
+                self.connection, txn_hash=txn_hash
+            )
+            return len(result) > 0
+        except Exception as e:
+            print(f"[TransactionsRepository] Error checking transaction existence: {e}")
+            return False
