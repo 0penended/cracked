@@ -1,19 +1,22 @@
 from typing import Dict, Any
 from app.services.routers.base import AlertRouter, AlertResult
-from app.models.domain.blockchain import UnifiedTransactionEvent
+from app.models.domain.blockchain import UnifiedTransactionEvent, Action
+from app.clients.TelegramClient import TelegramClient
 
 
 class TelegramAlertRouter(AlertRouter):
     """Router that sends alerts to Telegram."""
 
-    def __init__(self, config: Dict[str, Any]):
-        self.bot_token = config.get("bot_token")
-        self.chat_id = config.get("chat_id")
-        self.chain_name = config.get("chain_name", "Unknown")
+    def __init__(
+        self, telegram_client: TelegramClient, chat_id: str, chain_name: str = "Unknown"
+    ):
+        self.telegram_client = telegram_client
+        self.chat_id = chat_id
+        self.chain_name = chain_name
 
     async def send(self, event: UnifiedTransactionEvent, results: list[AlertResult]):
         """Send alert to Telegram."""
-        if not self.bot_token or not self.chat_id:
+        if not self.telegram_client or not self.chat_id:
             print("Telegram configuration missing")
             return
 
@@ -21,40 +24,38 @@ class TelegramAlertRouter(AlertRouter):
         message = self._build_message(event, results)
 
         # Send to Telegram
-        await self._send_telegram_message(message)
+        await self.telegram_client.send_message_async(
+            message, self.chat_id, parse_mode="Markdown"
+        )
 
     def _build_message(
         self, event: UnifiedTransactionEvent, results: list[AlertResult]
     ) -> str:
         """Build alert message for Telegram."""
-        message = f"🚨 {self.chain_name.upper()} ALERT 🚨\n\n"
-        message += f"Wallet: `{event.wallet_address}`\n"
-        message += f"Transaction: `{event.txn_hash}`\n"
-        message += f"Action: {event.action}\n"
-        message += f"Amount: {event.recieved_token_quantity}\n"
-        if event.recieved_token_symbol:
-            message += f"Symbol: {event.recieved_token_symbol}\n"
-        if event.recieved_token_price:
-            message += f"Price: {event.recieved_token_price}\n"
+        # Calculate USD value based on transaction action
+        if event.action in [Action.BUY, Action.OPEN_LONG, Action.CLOSE_SHORT]:
+            usd_value = event.recieved_token_quantity * event.recieved_token_price
+            token_symbol = event.recieved_token_symbol
+            token_quantity = event.recieved_token_quantity
+        elif event.action in [Action.SELL, Action.CLOSE_LONG, Action.OPEN_SHORT]:
+            usd_value = event.spent_token_amount * event.spent_token_price
+            token_symbol = event.spent_token_symbol
+            token_quantity = event.spent_token_amount
+        else:
+            usd_value = event.recieved_token_quantity * event.recieved_token_price
+            token_symbol = event.recieved_token_symbol
+            token_quantity = event.recieved_token_quantity
 
-        message += f"\nTriggers:\n"
+        message = f"🚨 {self.chain_name.upper()} ALERT 🚨\n\n"
+        message += f"💰 **Transaction Value**: ${usd_value:,.2f} USD\n"
+        message += f"🔗 **Wallet**: `{event.wallet_address}`\n"
+        message += f"📝 **Transaction**: `{event.txn_hash}`\n"
+        message += f"⚡ **Action**: {event.action.value}\n"
+        message += f"📊 **Amount**: {token_quantity:,.4f} {token_symbol}\n"
+        message += f"💵 **Price**: ${event.recieved_token_price:,.6f} USD\n"
+
+        message += f"\n🎯 **Triggers**:\n"
         for i, result in enumerate(results, 1):
             message += f"{i}. Score: {result.score:.2f} - {result.explanation}\n"
 
         return message
-
-    async def _send_telegram_message(self, message: str):
-        """Send message to Telegram."""
-        try:
-            import aiohttp
-
-            url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
-            data = {"chat_id": self.chat_id, "text": message, "parse_mode": "Markdown"}
-
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=data) as response:
-                    if response.status != 200:
-                        print(f"Failed to send Telegram message: {response.status}")
-
-        except Exception as e:
-            print(f"Error sending Telegram message: {e}") 

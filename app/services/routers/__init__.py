@@ -12,12 +12,11 @@ from .ml.xgboost_sol import XGBoostModelSOL
 
 # Alert routers
 from .alerts.telegram import TelegramAlertRouter
-from .alerts.database import PostgresWriter
 
 __all__ = [
     # Base classes
     "ModelRouter",
-    "HeuristicRouter", 
+    "HeuristicRouter",
     "AlertRouter",
     "AlertResult",
     # Heuristic routers
@@ -29,5 +28,4 @@ __all__ = [
     "XGBoostModelSOL",
     # Alert routers
     "TelegramAlertRouter",
-    "PostgresWriter",
 ]

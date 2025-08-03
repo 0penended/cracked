@@ -6,6 +6,7 @@ import asyncio
 import httpx
 from typing import List, Dict, Any
 import logging
+from .cache import token_cache
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class DexScreenerClient:
         self, mints: List[str]
     ) -> List[Dict[str, Any]]:
         """
-        Fetch token data for multiple mint addresses with rate limiting and exponential backoff retries.
+        Fetch token data for multiple mint addresses with caching and rate limiting.
 
         Args:
             mints: List of token mint addresses
@@ -28,18 +29,48 @@ class DexScreenerClient:
             List of dictionaries containing token data for each mint
         """
         results = []
+        uncached_mints = []
+
+        # Check cache first for all mints
+        for mint in mints:
+            cache_key = f"dexscreener:{mint}"
+            cached_data = await token_cache.get(cache_key)
+            if cached_data:
+                results.append(cached_data)
+                logger.debug(f"Cache hit for mint: {mint}")
+            else:
+                uncached_mints.append(mint)
+                results.append(None)  # Placeholder for later replacement
+
+        # If all data was cached, return early
+        if not uncached_mints:
+            logger.debug(f"All {len(mints)} mints found in cache")
+            return results
+
+        logger.debug(f"Fetching {len(uncached_mints)} uncached mints from API")
 
         async with httpx.AsyncClient() as client:
-            # Process mints in batches
-            for i in range(0, len(mints), self.batch_size):
-                batch = mints[i : i + self.batch_size]
+            # Process uncached mints in batches
+            for i in range(0, len(uncached_mints), self.batch_size):
+                batch = uncached_mints[i : i + self.batch_size]
 
                 # Process current batch with exponential backoff retries
                 batch_results = await self._process_batch_with_retry(batch, client)
-                results.extend(batch_results)
+
+                # Update results and cache the new data
+                for j, mint in enumerate(batch):
+                    result = batch_results[j]
+                    cache_key = f"dexscreener:{mint}"
+
+                    # Cache the result (even if it's an error)
+                    await token_cache.set(cache_key, result)
+
+                    # Update the results list
+                    mint_index = mints.index(mint)
+                    results[mint_index] = result
 
                 # Add delay between batches if there are more batches to process
-                if i + self.batch_size < len(mints):
+                if i + self.batch_size < len(uncached_mints):
                     await asyncio.sleep(self.delay_between_batches)
 
         return results

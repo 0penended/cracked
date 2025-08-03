@@ -6,7 +6,7 @@ from app.models.domain.blockchain import UnifiedTransactionEvent, Action
 class BatchedWalletTransactionRouter(HeuristicRouter):
     """Router that tracks batched transactions from different wallets with the same action for the same token."""
 
-    def __init__(self, batch_threshold: int = 5, time_window: int = 300):
+    def __init__(self, batch_threshold: int = 5, time_window: int = 1800):
         self.batch_threshold = batch_threshold
         self.time_window = time_window  # seconds
         # Track by token identifier (ID or symbol) and action
@@ -68,4 +68,4 @@ class BatchedWalletTransactionRouter(HeuristicRouter):
                 explanation=f"Multiple wallets ({len(unique_wallets)}) performing {event.action.value} on {token_identifier} in {self.time_window}s",
             )
 
-        return AlertResult(triggered=False, score=0.0) 
+        return AlertResult(triggered=False, score=0.0)

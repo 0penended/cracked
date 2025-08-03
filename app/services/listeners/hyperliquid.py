@@ -23,7 +23,9 @@ class HyperliquidListener(ChainListener):
         self.transaction_fetcher = transaction_fetcher
         self.addresses: Set[str] = set()
         self.info: Info = Info(constants.MAINNET_API_URL)  # Uses WS under the hood
-        self.loop = asyncio.get_event_loop()  # st
+        self.loop = asyncio.get_event_loop()
+
+        # Simple
 
     async def subscribe_wallets(self, addresses: list[str]):
         """Add a wallet address to be tracked."""
@@ -53,6 +55,19 @@ class HyperliquidListener(ChainListener):
     async def _handle_fill(self, msg: dict, wallet: str):
         """Handle individual UserFill event."""
         try:
+            # Extract transaction hash
+            tx_hash = self._get_tx_hash(msg)
+
+            if not tx_hash:
+                print(f"[Hyperliquid] No transaction hash found for {wallet}")
+                return
+            # Check database (persistent across restarts)
+            if await self.pipeline.db_writer.transaction_exists(tx_hash):
+                print(
+                    f"[Hyperliquid] Skipping duplicate transaction {tx_hash} (database)"
+                )
+                return
+
             # Use the transaction fetcher to parse and create the event
             event = await self.transaction_fetcher.parse_and_create_event(msg, wallet)
 
@@ -66,3 +81,22 @@ class HyperliquidListener(ChainListener):
             import traceback
 
             traceback.print_exc()
+
+    def _get_tx_hash(self, msg: dict) -> str:
+        """Extract transaction hash from the websocket message."""
+        try:
+            data = msg.get("data", {})
+            if not data:
+                return ""
+
+            fills = data.get("fills", [])
+            if not fills or len(fills) == 0:
+                return ""
+
+            # Get the first fill's hash
+            fill = fills[0]
+            return fill.get("hash", "")
+
+        except Exception as e:
+            print(f"[Hyperliquid] Error extracting transaction hash: {e}")
+            return ""

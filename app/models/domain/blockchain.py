@@ -30,8 +30,7 @@ class UnifiedTransactionEvent:
     # Trade context
     action: Action
 
-    # Asset acquired or traded
-    recieved_token_id: Optional[str] = None  # Contract address or token ID
+    # Asset acquired or traded (all required fields first)
     recieved_token_symbol: str
     recieved_token_quantity: float
     recieved_token_price: float  # USD price per unit
@@ -40,8 +39,7 @@ class UnifiedTransactionEvent:
     recieved_token_liquidity: float
     recieved_token_created_at: int
 
-    # Asset spent or received
-    spent_token_id: Optional[str] = None  # Contract address or token ID
+    # Asset spent or received (all required fields first)
     spent_token_symbol: str
     spent_token_amount: float
     spent_token_price: float  # USD price per unit
@@ -49,3 +47,7 @@ class UnifiedTransactionEvent:
     spent_token_price_change_h24: float
     spent_token_liquidity: float
     spent_token_created_at: int
+
+    # Optional fields (all default arguments at the end)
+    recieved_token_id: Optional[str] = None  # Contract address or token ID
+    spent_token_id: Optional[str] = None  # Contract address or token ID
