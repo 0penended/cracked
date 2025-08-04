@@ -12,6 +12,19 @@ class HyperliquidTransactionFetcher:
     def __init__(self, coinmarketcap_client: CoinMarketCapClient):
         self.coinmarketcap_client = coinmarketcap_client
 
+    def _round_market_cap_volume(self, value: float) -> float:
+        """Round market cap and volume values to the nearest whole number."""
+        return round(value)
+
+    def _format_price(self, price: float) -> float:
+        """Format price to 2 decimal places for USD-like values, or full float for fractional values."""
+        if price >= 0.01:
+            # For values >= 1 cent, round to 2 decimal places
+            return round(price, 2)
+        else:
+            # For fractional values (< 1 cent), keep full float precision
+            return price
+
     async def parse_and_create_event(
         self, msg: dict, wallet: str
     ) -> Optional[UnifiedTransactionEvent]:
@@ -172,10 +185,14 @@ class HyperliquidTransactionFetcher:
 
         if received_symbol != "USDC" and received_symbol in market_data:
             quote_data = market_data[received_symbol].get("quote", {}).get("USD", {})
-            received_volume_h24 = float(quote_data.get("volume_24h", 0))
+            received_volume_h24 = self._round_market_cap_volume(
+                float(quote_data.get("volume_24h", 0))
+            )
             received_price_change_h24 = float(quote_data.get("percent_change_24h", 0))
             # For liquidity, we'll use market cap as a proxy since CMC doesn't provide liquidity directly
-            received_liquidity = float(quote_data.get("market_cap", 0))
+            received_liquidity = self._round_market_cap_volume(
+                float(quote_data.get("market_cap", 0))
+            )
             received_created_at = int(
                 market_data[received_symbol]
                 .get("date_added", "2010-01-01T00:00:00.000Z")
@@ -193,10 +210,14 @@ class HyperliquidTransactionFetcher:
 
         if spent_symbol != "USDC" and spent_symbol in market_data:
             quote_data = market_data[spent_symbol].get("quote", {}).get("USD", {})
-            spent_volume_h24 = float(quote_data.get("volume_24h", 0))
+            spent_volume_h24 = self._round_market_cap_volume(
+                float(quote_data.get("volume_24h", 0))
+            )
             spent_price_change_h24 = float(quote_data.get("percent_change_24h", 0))
             # For liquidity, we'll use market cap as a proxy since CMC doesn't provide liquidity directly
-            spent_liquidity = float(quote_data.get("market_cap", 0))
+            spent_liquidity = self._round_market_cap_volume(
+                float(quote_data.get("market_cap", 0))
+            )
             spent_created_at = int(
                 market_data[spent_symbol]
                 .get("date_added", "2010-01-01T00:00:00.000Z")
@@ -205,6 +226,10 @@ class HyperliquidTransactionFetcher:
                 .split(" ")[0]
                 .replace("-", "")
             )
+
+        # Format prices appropriately
+        received_price = self._format_price(price if received_symbol != "USDC" else 1.0)
+        spent_price = self._format_price(price if spent_symbol != "USDC" else 1.0)
 
         # Create UnifiedTransactionEvent
         event = UnifiedTransactionEvent(
@@ -216,7 +241,7 @@ class HyperliquidTransactionFetcher:
             recieved_token_id=None,  # Hyperliquid doesn't provide contract addresses
             recieved_token_symbol=received_symbol,
             recieved_token_quantity=received_amount,
-            recieved_token_price=price if received_symbol != "USDC" else 1.0,
+            recieved_token_price=received_price,
             recieved_token_volume_h24=received_volume_h24,
             recieved_token_price_change_h24=received_price_change_h24,
             recieved_token_liquidity=received_liquidity,
@@ -224,7 +249,7 @@ class HyperliquidTransactionFetcher:
             spent_token_id=None,  # Hyperliquid doesn't provide contract addresses
             spent_token_symbol=spent_symbol,
             spent_token_amount=spent_amount,
-            spent_token_price=price if spent_symbol != "USDC" else 1.0,
+            spent_token_price=spent_price,
             spent_token_volume_h24=spent_volume_h24,
             spent_token_price_change_h24=spent_price_change_h24,
             spent_token_liquidity=spent_liquidity,

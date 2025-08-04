@@ -27,7 +27,7 @@ class HyperliquidListener(ChainListener):
 
         # Simple
 
-    async def subscribe_wallets(self, addresses: list[str]):
+    def subscribe_wallets(self, addresses: list[str]):
         """Add a wallet address to be tracked."""
         for addr in addresses:
             self.addresses.add(addr)

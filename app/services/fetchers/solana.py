@@ -19,6 +19,19 @@ class SolanaTransactionFetcher:
         self.http_client = HttpClient(rpc_url)
         self.dex_screener_client = dex_screener_client
 
+    def _round_market_cap_volume(self, value: float) -> float:
+        """Round market cap and volume values to the nearest whole number."""
+        return round(value)
+
+    def _format_price(self, price: float) -> float:
+        """Format price to 2 decimal places for USD-like values, or full float for fractional values."""
+        if price >= 0.01:
+            # For values >= 1 cent, round to 2 decimal places
+            return round(price, 2)
+        else:
+            # For fractional values (< 1 cent), keep full float precision
+            return price
+
     async def fetch_and_parse_transaction(
         self, signature: str
     ) -> Optional[UnifiedTransactionEvent]:
@@ -140,17 +153,29 @@ class SolanaTransactionFetcher:
                 print(f"No metadata found for spent token: {spent_token_address}")
 
         # Extract final values
-        received_price = self._extract_price(
-            received_pair_data, received_token["mint"] if received_token else None
+        received_price = self._format_price(
+            self._extract_price(
+                received_pair_data, received_token["mint"] if received_token else None
+            )
         )
-        received_volume = self._extract_volume_24h(received_pair_data)
-        received_liquidity = self._extract_liquidity(received_pair_data)
+        received_volume = self._round_market_cap_volume(
+            self._extract_volume_24h(received_pair_data)
+        )
+        received_liquidity = self._round_market_cap_volume(
+            self._extract_liquidity(received_pair_data)
+        )
 
-        spent_price = self._extract_price(
-            spent_pair_data, spent_token["mint"] if spent_token else None
+        spent_price = self._format_price(
+            self._extract_price(
+                spent_pair_data, spent_token["mint"] if spent_token else None
+            )
         )
-        spent_volume = self._extract_volume_24h(spent_pair_data)
-        spent_liquidity = self._extract_liquidity(spent_pair_data)
+        spent_volume = self._round_market_cap_volume(
+            self._extract_volume_24h(spent_pair_data)
+        )
+        spent_liquidity = self._round_market_cap_volume(
+            self._extract_liquidity(spent_pair_data)
+        )
 
         # Create the unified event
         event = UnifiedTransactionEvent(

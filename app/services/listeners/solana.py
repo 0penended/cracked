@@ -29,7 +29,7 @@ class SolanaListener(ChainListener):
         self.recent_signatures: Set[str] = set()
         self.conn = None
 
-    async def subscribe_wallets(self, addresses: list[str]):
+    def subscribe_wallets(self, addresses: list[str]):
         """Subscribe to wallet addresses for monitoring."""
         for addr in addresses:
             self.addresses.add(addr)
