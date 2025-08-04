@@ -12,7 +12,9 @@ from app.services.fetchers.hyperliquid import HyperliquidTransactionFetcher
 
 
 class HyperliquidListener(ChainListener):
-    """Hyperliquid blockchain listener using the official SDK."""
+    """Hyperliquid blockchain listener using the official SDK.
+    Simple, efficient implementation for monitoring wallets.
+    """
 
     def __init__(
         self,
@@ -25,9 +27,7 @@ class HyperliquidListener(ChainListener):
         self.info: Info = Info(constants.MAINNET_API_URL)  # Uses WS under the hood
         self.loop = asyncio.get_event_loop()
 
-        # Simple
-
-    async def subscribe_wallets(self, addresses: list[str]):
+    def subscribe_wallets(self, addresses: list[str]):
         """Add a wallet address to be tracked."""
         for addr in addresses:
             self.addresses.add(addr)
@@ -35,8 +35,6 @@ class HyperliquidListener(ChainListener):
     async def run(self):
         """Subscribe to userFills for each wallet and keep the loop alive."""
         try:
-            print(f"[Hyperliquid] Subscribing to {len(self.addresses)} wallet(s)...")
-
             for addr in self.addresses:
                 self.info.subscribe(
                     {"type": "userFills", "user": addr},
@@ -44,7 +42,6 @@ class HyperliquidListener(ChainListener):
                         self._handle_fill(msg, address), self.loop
                     ),
                 )
-                print(f"[Hyperliquid] Subscribed to userFills for {addr}")
 
             while True:
                 await asyncio.sleep(3600)  # Keep alive
@@ -61,11 +58,10 @@ class HyperliquidListener(ChainListener):
             if not tx_hash:
                 print(f"[Hyperliquid] No transaction hash found for {wallet}")
                 return
+
             # Check database (persistent across restarts)
             if await self.pipeline.db_writer.transaction_exists(tx_hash):
-                print(
-                    f"[Hyperliquid] Skipping duplicate transaction {tx_hash} (database)"
-                )
+                # Skip duplicate transaction - no need for verbose logging
                 return
 
             # Use the transaction fetcher to parse and create the event

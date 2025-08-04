@@ -41,6 +41,12 @@ class AppSettings(BaseAppSettings):
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
 
+    # BigQuery configuration for token price sync
+    bigquery_positions_dataset: str = "your_dataset"
+    bigquery_positions_table: str = "positions"
+    bigquery_prices_dataset: str = "your_dataset"
+    bigquery_prices_table: str = "coin_prices"
+
     class Config:
         validate_assignment = True
 
