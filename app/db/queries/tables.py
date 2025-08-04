@@ -39,7 +39,7 @@ class Transactions(TypedTable):
     received_token_volume_h24: Optional[float]
     received_token_price_change_h24: Optional[float]
     received_token_liquidity: Optional[float]
-    received_token_created_at: Optional[int]
+    received_token_created_at: Optional[int]  # BIGINT in database, int in Python
     spent_token_id: Optional[str]
     spent_token_marketcap: Optional[float]
     spent_token_price: Optional[float]
@@ -48,7 +48,7 @@ class Transactions(TypedTable):
     spent_token_volume_h24: Optional[float]
     spent_token_price_change_h24: Optional[float]
     spent_token_liquidity: Optional[float]
-    spent_token_created_at: Optional[int]
+    spent_token_created_at: Optional[int]  # BIGINT in database, int in Python
 
 
 transactions = Transactions()

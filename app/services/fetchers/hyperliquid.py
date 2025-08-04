@@ -25,12 +25,15 @@ class HyperliquidTransactionFetcher:
             # For fractional values (< 1 cent), keep full float precision
             return price
 
+    def _format_price_change(self, price_change: float) -> float:
+        """Format 24h price change percentage to 2 decimal places."""
+        return round(price_change, 2)
+
     async def parse_and_create_event(
         self, msg: dict, wallet: str
     ) -> Optional[UnifiedTransactionEvent]:
         """Parse a Hyperliquid websocket message and create a UnifiedTransactionEvent."""
         try:
-            print(f"[Hyperliquid] {msg}")
             data = msg.get("data")
             if not data:
                 print(f"[Hyperliquid] No data in message for {wallet}")
@@ -188,19 +191,26 @@ class HyperliquidTransactionFetcher:
             received_volume_h24 = self._round_market_cap_volume(
                 float(quote_data.get("volume_24h", 0))
             )
-            received_price_change_h24 = float(quote_data.get("percent_change_24h", 0))
+            received_price_change_h24 = self._format_price_change(
+                float(quote_data.get("percent_change_24h", 0))
+            )
             # For liquidity, we'll use market cap as a proxy since CMC doesn't provide liquidity directly
             received_liquidity = self._round_market_cap_volume(
                 float(quote_data.get("market_cap", 0))
             )
-            received_created_at = int(
-                market_data[received_symbol]
-                .get("date_added", "2010-01-01T00:00:00.000Z")
-                .replace("T", " ")
-                .replace("Z", "")
-                .split(" ")[0]
-                .replace("-", "")
+            # Convert ISO date string to Unix timestamp in seconds
+            import datetime
+
+            date_str = market_data[received_symbol].get(
+                "date_added", "2010-01-01T00:00:00.000Z"
             )
+            try:
+                # Parse ISO date string and convert to Unix timestamp
+                dt = datetime.datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                received_created_at = int(dt.timestamp())
+            except (ValueError, TypeError):
+                # Fallback to default timestamp if parsing fails
+                received_created_at = 1262304000  # 2010-01-01 00:00:00 UTC
 
         # Extract market data for spent token
         spent_volume_h24 = 0.0
@@ -213,19 +223,24 @@ class HyperliquidTransactionFetcher:
             spent_volume_h24 = self._round_market_cap_volume(
                 float(quote_data.get("volume_24h", 0))
             )
-            spent_price_change_h24 = float(quote_data.get("percent_change_24h", 0))
+            spent_price_change_h24 = self._format_price_change(
+                float(quote_data.get("percent_change_24h", 0))
+            )
             # For liquidity, we'll use market cap as a proxy since CMC doesn't provide liquidity directly
             spent_liquidity = self._round_market_cap_volume(
                 float(quote_data.get("market_cap", 0))
             )
-            spent_created_at = int(
-                market_data[spent_symbol]
-                .get("date_added", "2010-01-01T00:00:00.000Z")
-                .replace("T", " ")
-                .replace("Z", "")
-                .split(" ")[0]
-                .replace("-", "")
+            # Convert ISO date string to Unix timestamp in seconds
+            date_str = market_data[spent_symbol].get(
+                "date_added", "2010-01-01T00:00:00.000Z"
             )
+            try:
+                # Parse ISO date string and convert to Unix timestamp
+                dt = datetime.datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                spent_created_at = int(dt.timestamp())
+            except (ValueError, TypeError):
+                # Fallback to default timestamp if parsing fails
+                spent_created_at = 1262304000  # 2010-01-01 00:00:00 UTC
 
         # Format prices appropriately
         received_price = self._format_price(price if received_symbol != "USDC" else 1.0)
@@ -256,7 +271,5 @@ class HyperliquidTransactionFetcher:
             spent_token_created_at=spent_created_at,
         )
 
-        print(
-            f"[Hyperliquid] Created event: {action} {received_amount} {received_symbol} for {spent_amount} {spent_symbol}"
-        )
+        # Event created successfully - no need for verbose logging
         return event

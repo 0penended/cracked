@@ -7,17 +7,28 @@ logger = logging.getLogger(__name__)
 
 
 class CoinMarketCapClient:
-    def __init__(self, api_key: str, base_url: str):
+    def __init__(
+        self, api_key: str, base_url: str = "https://pro-api.coinmarketcap.com"
+    ):
         self.api_key = api_key
-        self.base_url = "https://pro-api.coinmarketcap.com"
-        self.client = httpx.Client(
+        self.base_url = base_url
+        # Use async client with connection pooling for better performance
+        self.client = httpx.AsyncClient(
             headers={
                 "Accepts": "application/json",
                 "X-CMC_PRO_API_KEY": self.api_key,
-            }
+            },
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            timeout=httpx.Timeout(10.0),
         )
 
-    def get_prices(
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.client.aclose()
+
+    async def get_prices(
         self, symbols: List[str], convert: str = "USD"
     ) -> Optional[Dict[str, Any]]:
         # Check cache first for each symbol individually
@@ -26,20 +37,15 @@ class CoinMarketCapClient:
 
         for symbol in symbols:
             cache_key = f"coinmarketcap:{symbol}:{convert}"
-            cached_symbol_data = token_cache.get_sync(cache_key)
+            cached_symbol_data = await token_cache.get(cache_key)
             if cached_symbol_data:
                 cached_data[symbol] = cached_symbol_data
-                logger.debug(f"Cache hit for symbol: {symbol}")
             else:
                 uncached_symbols.append(symbol)
-                logger.debug(f"Cache miss for symbol: {symbol}")
 
         # If all symbols were cached, return combined data
         if not uncached_symbols:
-            logger.debug(f"All {len(symbols)} symbols found in cache")
             return cached_data
-
-        logger.debug(f"Fetching {len(uncached_symbols)} uncached symbols from API")
 
         # Fetch uncached symbols from API
         url = f"{self.base_url}/v1/cryptocurrency/quotes/latest"
@@ -49,7 +55,7 @@ class CoinMarketCapClient:
         }
 
         try:
-            response = self.client.get(url, params=params)
+            response = await self.client.get(url, params=params)
             response.raise_for_status()
             data = response.json()
             api_data = data.get("data", {})
@@ -65,9 +71,8 @@ class CoinMarketCapClient:
 
                 if symbol_data:
                     cache_key = f"coinmarketcap:{symbol}:{convert}"
-                    token_cache.set_sync(cache_key, symbol_data)
+                    await token_cache.set(cache_key, symbol_data)
                     cached_data[symbol] = symbol_data
-                    logger.debug(f"Cached new data for symbol: {symbol}")
                 else:
                     logger.warning(f"No data found for symbol: {symbol}")
 

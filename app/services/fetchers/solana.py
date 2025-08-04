@@ -32,6 +32,10 @@ class SolanaTransactionFetcher:
             # For fractional values (< 1 cent), keep full float precision
             return price
 
+    def _format_price_change(self, price_change: float) -> float:
+        """Format 24h price change percentage to 2 decimal places."""
+        return round(price_change, 2)
+
     async def fetch_and_parse_transaction(
         self, signature: str
     ) -> Optional[UnifiedTransactionEvent]:
@@ -52,16 +56,24 @@ class SolanaTransactionFetcher:
             if not tx or not tx.value:
                 print(f"[Solana] Transaction not found: {signature}")
                 return None
-
             parsed_data = self._parse_token_deltas(tx)
             if not parsed_data:
                 return None
 
             token_deltas = parsed_data["token_deltas"]
             wallet_address = parsed_data["wallet_address"]
+            transaction_signature = parsed_data["transaction_signature"]
+
+            # Use the transaction signature from the response if available, otherwise fall back to the input signature
+            txn_hash = transaction_signature if transaction_signature else signature
+
+            # Ensure txn_hash is a string
+            if not isinstance(txn_hash, str):
+                print(f"[Solana] Warning: txn_hash is not a string: {type(txn_hash)}")
+                txn_hash = str(txn_hash)
 
             return await self._create_unified_event(
-                token_deltas, signature, wallet_address
+                token_deltas, txn_hash, wallet_address
             )
 
         except Exception as e:
@@ -131,10 +143,12 @@ class SolanaTransactionFetcher:
                     )
                 else:
                     print(
-                        f"No pairs found for received token: {received_token_address}"
+                        f"[Solana] No pairs found for received token: {received_token_address}"
                     )
             else:
-                print(f"No metadata found for received token: {received_token_address}")
+                print(
+                    f"[Solana] No metadata found for received token: {received_token_address}"
+                )
 
             # Get spent token metadata
             spent_token_address = spent_token["mint"]
@@ -148,9 +162,13 @@ class SolanaTransactionFetcher:
                         .get("symbol", "UNKNOWN")
                     )
                 else:
-                    print(f"No pairs found for spent token: {spent_token_address}")
+                    print(
+                        f"[Solana] No pairs found for spent token: {spent_token_address}"
+                    )
             else:
-                print(f"No metadata found for spent token: {spent_token_address}")
+                print(
+                    f"[Solana] No metadata found for spent token: {spent_token_address}"
+                )
 
         # Extract final values
         received_price = self._format_price(
@@ -189,24 +207,28 @@ class SolanaTransactionFetcher:
             recieved_token_quantity=received_token["amount"] if received_token else 0.0,
             recieved_token_price=received_price,
             recieved_token_volume_h24=received_volume,
-            recieved_token_price_change_h24=self._extract_price_change_24h(
-                received_pair_data
+            recieved_token_price_change_h24=self._format_price_change(
+                self._extract_price_change_24h(received_pair_data)
             ),
             recieved_token_liquidity=received_liquidity,
             recieved_token_created_at=(
-                received_pair_data.get("pairCreatedAt", 0) if received_pair_data else 0
+                int(received_pair_data.get("pairCreatedAt", 0) / 1000)
+                if received_pair_data
+                else 0
             ),
             spent_token_id=spent_token["mint"] if spent_token else None,
             spent_token_symbol=spent_symbol,
             spent_token_amount=spent_token["amount"] if spent_token else 0.0,
             spent_token_price=spent_price,
             spent_token_volume_h24=spent_volume,
-            spent_token_price_change_h24=self._extract_price_change_24h(
-                spent_pair_data
+            spent_token_price_change_h24=self._format_price_change(
+                self._extract_price_change_24h(spent_pair_data)
             ),
             spent_token_liquidity=spent_liquidity,
             spent_token_created_at=(
-                spent_pair_data.get("pairCreatedAt", 0) if spent_pair_data else 0
+                int(spent_pair_data.get("pairCreatedAt", 0) / 1000)
+                if spent_pair_data
+                else 0
             ),
         )
 
@@ -292,6 +314,13 @@ class SolanaTransactionFetcher:
 
         txn = raw.value.transaction.transaction
         meta = raw.value.transaction.meta
+
+        # Get transaction signature from the response
+        if raw.value.transaction.transaction.signatures:
+            raw_signature = raw.value.transaction.transaction.signatures[0]
+            transaction_signature = str(raw_signature)
+        else:
+            transaction_signature = None
 
         # Get wallet address (fee payer)
         wallet_address = str(txn.message.account_keys[0].pubkey)
@@ -396,4 +425,5 @@ class SolanaTransactionFetcher:
         return {
             "token_deltas": token_deltas,
             "wallet_address": wallet_address,
+            "transaction_signature": transaction_signature,
         }
