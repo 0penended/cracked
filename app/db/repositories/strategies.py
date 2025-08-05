@@ -11,11 +11,11 @@ from app.services.routers.base import StrategyResult
 from app.db.queries.queries import queries
 
 
-class StrategiesRepository:
-    """Repository for managing strategy definitions and results."""
+from app.db.repositories.base import BaseRepository
 
-    def __init__(self, connection: asyncpg.Connection):
-        self.connection = connection
+
+class StrategiesRepository(BaseRepository):
+    """Repository for managing strategy definitions and results."""
 
     async def create_strategy(
         self,
@@ -29,61 +29,73 @@ class StrategiesRepository:
         if created_at is None:
             created_at = int(datetime.now().timestamp() * 1000)
 
-        async with self.connection.transaction():
-            strategy_row = await queries.create_strategy(
-                self.connection,
-                type=strategy_type,
-                description=description,
-                parameters=json.dumps(parameters) if parameters else None,
-                is_active=is_active,
-                created_at=created_at,
-            )
+        conn = await self.get_connection()
+        try:
+            async with conn.transaction():
+                strategy_row = await queries.create_strategy(
+                    conn,
+                    type=strategy_type,
+                    description=description,
+                    parameters=json.dumps(parameters) if parameters else None,
+                    is_active=is_active,
+                    created_at=created_at,
+                )
 
-        # Map database fields to model fields
-        record_dict = strategy_row[0]
-        return StrategyDefinitionInDB(
-            id_=record_dict["id"],
-            type=Strategy(record_dict["type"]),
-            description=record_dict["description"],
-            parameters=record_dict.get("parameters"),  # Keep as string for now
-            is_active=record_dict.get("is_active", True),
-            created_at=record_dict.get("created_at"),
-        )
+            # Map database fields to model fields
+            record_dict = strategy_row[0]
+            return StrategyDefinitionInDB(
+                id_=record_dict["id"],
+                type=Strategy(record_dict["type"]),
+                description=record_dict["description"],
+                parameters=record_dict.get("parameters"),  # Keep as string for now
+                is_active=record_dict.get("is_active", True),
+                created_at=record_dict.get("created_at"),
+            )
+        finally:
+            await self.release_connection(conn)
 
     async def get_strategy_by_type(
         self, strategy_type: str
     ) -> Optional[StrategyDefinitionInDB]:
         """Get a strategy definition by type (assumes type is unique)."""
-        strategy_row = await queries.get_strategy_by_type(
-            self.connection, type=strategy_type
-        )
-        if strategy_row:
-            # Map database fields to model fields
-            return StrategyDefinitionInDB(
-                id_=strategy_row[0]["id"],
-                type=Strategy(strategy_row[0]["type"]),
-                description=strategy_row[0]["description"],
-                parameters=strategy_row[0].get("parameters"),  # Keep as string for now
-                is_active=strategy_row[0].get("is_active", True),
-                created_at=strategy_row[0].get("created_at"),
-            )
-        return None
+        conn = await self.get_connection()
+        try:
+            strategy_row = await queries.get_strategy_by_type(conn, type=strategy_type)
+            if strategy_row:
+                # Map database fields to model fields
+                return StrategyDefinitionInDB(
+                    id_=strategy_row[0]["id"],
+                    type=Strategy(strategy_row[0]["type"]),
+                    description=strategy_row[0]["description"],
+                    parameters=strategy_row[0].get(
+                        "parameters"
+                    ),  # Keep as string for now
+                    is_active=strategy_row[0].get("is_active", True),
+                    created_at=strategy_row[0].get("created_at"),
+                )
+            return None
+        finally:
+            await self.release_connection(conn)
 
     async def get_all_active_strategies(self) -> List[StrategyDefinitionInDB]:
         """Get all active strategy definitions."""
-        strategy_rows = await queries.get_all_active_strategies(self.connection)
+        conn = await self.get_connection()
+        try:
+            strategy_rows = await queries.get_all_active_strategies(conn)
 
-        return [
-            StrategyDefinitionInDB(
-                id_=row["id"],
-                type=Strategy(row["type"]),
-                description=row["description"],
-                parameters=row.get("parameters"),  # Keep as string for now
-                is_active=row.get("is_active", True),
-                created_at=row.get("created_at"),
-            )
-            for row in strategy_rows
-        ]
+            return [
+                StrategyDefinitionInDB(
+                    id_=row["id"],
+                    type=Strategy(row["type"]),
+                    description=row["description"],
+                    parameters=row.get("parameters"),  # Keep as string for now
+                    is_active=row.get("is_active", True),
+                    created_at=row.get("created_at"),
+                )
+                for row in strategy_rows
+            ]
+        finally:
+            await self.release_connection(conn)
 
     async def save_strategy_results(
         self, transaction_id: int, strategy_results: List[StrategyResult]
@@ -105,20 +117,24 @@ class StrategiesRepository:
                 metadata=result.metadata,
             )
 
-            async with self.connection.transaction():
-                strategy_row = await queries.create_transaction_strategy(
-                    self.connection,
-                    transaction_id=strategy.transaction_id,
-                    strategy_id=strategy.strategy_id,
-                    confidence=strategy.confidence,
-                    explanation=strategy.explanation,
-                    metadata=(
-                        json.dumps(strategy.metadata) if strategy.metadata else None
-                    ),
-                    created_at=strategy.created_at or int(time.time() * 1000),
-                )
+            conn = await self.get_connection()
+            try:
+                async with conn.transaction():
+                    strategy_row = await queries.create_transaction_strategy(
+                        conn,
+                        transaction_id=strategy.transaction_id,
+                        strategy_id=strategy.strategy_id,
+                        confidence=strategy.confidence,
+                        explanation=strategy.explanation,
+                        metadata=(
+                            json.dumps(strategy.metadata) if strategy.metadata else None
+                        ),
+                        created_at=strategy.created_at or int(time.time() * 1000),
+                    )
 
-            saved_strategies.append(strategy)
+                saved_strategies.append(strategy)
+            finally:
+                await self.release_connection(conn)
 
         return saved_strategies
 
@@ -126,22 +142,26 @@ class StrategiesRepository:
         self, transaction_id: int
     ) -> List[TransactionStrategyInDB]:
         """Get all strategy results for a specific transaction."""
-        strategy_rows = await queries.get_transaction_strategies(
-            self.connection, transaction_id=transaction_id
-        )
-
-        return [
-            TransactionStrategyInDB(
-                id_=row["id"],
-                transaction_id=row["transaction_id"],
-                strategy_id=row["strategy_id"],
-                confidence=row["confidence"],
-                explanation=row["explanation"],
-                metadata=row.get("metadata"),
-                created_at=row.get("created_at"),
+        conn = await self.get_connection()
+        try:
+            strategy_rows = await queries.get_transaction_strategies(
+                conn, transaction_id=transaction_id
             )
-            for row in strategy_rows
-        ]
+
+            return [
+                TransactionStrategyInDB(
+                    id_=row["id"],
+                    transaction_id=row["transaction_id"],
+                    strategy_id=row["strategy_id"],
+                    confidence=row["confidence"],
+                    explanation=row["explanation"],
+                    metadata=row.get("metadata"),
+                    created_at=row.get("created_at"),
+                )
+                for row in strategy_rows
+            ]
+        finally:
+            await self.release_connection(conn)
 
     async def get_strategy_statistics(
         self,
@@ -150,28 +170,32 @@ class StrategiesRepository:
         end_timestamp: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """Get statistics about strategy performance."""
-        stats_rows = await queries.get_strategy_statistics(
-            self.connection,
-            type=strategy_type,
-            start_timestamp=start_timestamp,
-            end_timestamp=end_timestamp,
-        )
+        conn = await self.get_connection()
+        try:
+            stats_rows = await queries.get_strategy_statistics(
+                conn,
+                type=strategy_type,
+                start_timestamp=start_timestamp,
+                end_timestamp=end_timestamp,
+            )
 
-        return [
-            {
-                "type": row["type"],
-                "strategy_description": row["strategy_description"],
-                "total_matches": row["total_matches"],
-                "avg_confidence": (
-                    float(row["avg_confidence"]) if row["avg_confidence"] else 0.0
-                ),
-                "min_confidence": (
-                    float(row["min_confidence"]) if row["min_confidence"] else 0.0
-                ),
-                "max_confidence": (
-                    float(row["max_confidence"]) if row["max_confidence"] else 0.0
-                ),
-                "unique_transactions": row["unique_transactions"],
-            }
-            for row in stats_rows
-        ]
+            return [
+                {
+                    "type": row["type"],
+                    "strategy_description": row["strategy_description"],
+                    "total_matches": row["total_matches"],
+                    "avg_confidence": (
+                        float(row["avg_confidence"]) if row["avg_confidence"] else 0.0
+                    ),
+                    "min_confidence": (
+                        float(row["min_confidence"]) if row["min_confidence"] else 0.0
+                    ),
+                    "max_confidence": (
+                        float(row["max_confidence"]) if row["max_confidence"] else 0.0
+                    ),
+                    "unique_transactions": row["unique_transactions"],
+                }
+                for row in stats_rows
+            ]
+        finally:
+            await self.release_connection(conn)

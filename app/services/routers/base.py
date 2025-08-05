@@ -4,7 +4,7 @@ from typing import List, Optional
 from enum import Enum
 
 from app.models.domain.blockchain import UnifiedTransactionEvent
-from app.models.domain.transactions import Strategy
+from app.models.domain.strategy import Strategy
 
 
 @dataclass

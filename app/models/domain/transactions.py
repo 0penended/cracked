@@ -8,29 +8,29 @@ from app.models.domain.rwmodel import RWModel
 
 
 class Transaction(RWModel):
-    wallet_address: str
-    chain: str
-    txn_hash: str
     action: str
-    timestamp: int
+    chain: str
+    received_token_created_at: Optional[int] = None
     received_token_id: Optional[str] = None
+    received_token_liquidity: Optional[float] = None
     received_token_marketcap: Optional[float] = None
     received_token_price: Optional[float] = None
+    received_token_price_change_h24: Optional[float] = None
     received_token_quantity: Optional[float] = None
     received_token_symbol: Optional[str] = None
     received_token_volume_h24: Optional[float] = None
-    received_token_price_change_h24: Optional[float] = None
-    received_token_liquidity: Optional[float] = None
-    received_token_created_at: Optional[int] = None
+    spent_token_created_at: Optional[int] = None
     spent_token_id: Optional[str] = None
+    spent_token_liquidity: Optional[float] = None
     spent_token_marketcap: Optional[float] = None
     spent_token_price: Optional[float] = None
+    spent_token_price_change_h24: Optional[float] = None
     spent_token_quantity: Optional[float] = None
     spent_token_symbol: Optional[str] = None
     spent_token_volume_h24: Optional[float] = None
-    spent_token_price_change_h24: Optional[float] = None
-    spent_token_liquidity: Optional[float] = None
-    spent_token_created_at: Optional[int] = None
+    timestamp: int
+    txn_hash: str
+    wallet_address: str
 
     @validator("action")
     def validate_action(cls, v):

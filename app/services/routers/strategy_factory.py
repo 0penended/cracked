@@ -159,12 +159,11 @@ class HyperliquidStrategies:
         factory = StrategyFactory(db_repository)
 
         return [
-            await factory.create_high_volume(HighVolumeParams(threshold=1000000)),
             await factory.create_batched_wallet(
                 BatchedWalletParams(batch_threshold=3, time_window=1800)
             ),
             await factory.create_large_transaction(
-                LargeTransactionParams(size_threshold=10000)
+                LargeTransactionParams(size_threshold=100000)
             ),
         ]
 

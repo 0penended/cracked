@@ -1,14 +1,13 @@
 import asyncio
-import time
 from typing import Set
 from loguru import logger
 
 from hyperliquid.info import Info
 from hyperliquid.utils import constants
+from hyperliquid.utils.types import UserFillsSubscription
 
 from app.services.listeners.base import ChainListener
 from app.services.pipeline.core import CoreTransactionPipeline
-from app.clients.CoinMarketCapClient import CoinMarketCapClient
 from app.services.fetchers.hyperliquid import HyperliquidTransactionFetcher
 
 
@@ -26,29 +25,34 @@ class HyperliquidListener(ChainListener):
         self.transaction_fetcher = transaction_fetcher
         self.addresses: Set[str] = set()
         self.info: Info = Info(constants.MAINNET_API_URL)  # Uses WS under the hood
-        self.loop = asyncio.get_event_loop()
+        self._running = True
+        self._stop_event = asyncio.Event()
+        self._loop = None
 
     def subscribe_wallets(self, addresses: list[str]):
-        """Add a wallet address to be tracked."""
+        """Subscribe to wallet addresses for monitoring."""
         for addr in addresses:
             self.addresses.add(addr)
 
     async def run(self):
-        """Subscribe to userFills for each wallet and keep the loop alive."""
+        """Subscribe to userFills for each wallet and keep the connection alive."""
         try:
+            # Store the event loop for use in callbacks
+            self._loop = asyncio.get_running_loop()
+
             logger.info(f"🔗 Subscribing to {len(self.addresses)} Hyperliquid wallets")
+
             for addr in self.addresses:
-                logger.info(f"📡 Subscribing to wallet: {addr}")
+                subscription = UserFillsSubscription(type="userFills", user=addr)
                 self.info.subscribe(
-                    {"type": "userFills", "user": addr},
-                    lambda msg, address=addr: asyncio.run_coroutine_threadsafe(
-                        self._handle_fill(msg, address), self.loop
-                    ),
+                    subscription,
+                    lambda msg, address=addr: self._handle_fill_sync(msg, address),
                 )
 
-            logger.info("✅ Hyperliquid subscriptions active, keeping alive...")
-            while True:
-                await asyncio.sleep(3600)  # Keep alive
+            logger.info("✅ Hyperliquid subscriptions created")
+
+            # Wait for stop signal - much more efficient than polling
+            await self._stop_event.wait()
 
         except Exception as e:
             logger.error(f"❌ Hyperliquid listener error: {e}")
@@ -56,11 +60,9 @@ class HyperliquidListener(ChainListener):
 
             logger.error(f"Traceback: {traceback.format_exc()}")
 
-    async def _handle_fill(self, msg: dict, wallet: str):
-        """Handle individual UserFill event."""
+    def _handle_fill_sync(self, msg: dict, wallet: str):
+        """Handle individual UserFill event synchronously - process immediately."""
         try:
-            logger.info(f"📨 Received Hyperliquid fill for wallet: {wallet}")
-
             # Extract transaction hash
             tx_hash = self._get_tx_hash(msg)
 
@@ -68,27 +70,44 @@ class HyperliquidListener(ChainListener):
                 logger.warning(f"⚠️ No transaction hash found for {wallet}")
                 return
 
-            logger.info(f"🔍 Processing transaction: {tx_hash} for wallet: {wallet}")
+            # Schedule the async task using the stored event loop
+            if self._loop and self._loop.is_running():
+                self._loop.call_soon_threadsafe(
+                    lambda: asyncio.create_task(
+                        self._process_fill_async(msg, wallet, tx_hash)
+                    )
+                )
+            else:
+                logger.warning("Event loop not available for scheduling async task")
 
-            # Check database (persistent across restarts)
-            if await self.pipeline.transaction_repository.transaction_exists(tx_hash):
-                logger.info(f"⏭️ Skipping duplicate transaction: {tx_hash}")
-                return
+        except Exception as e:
+            logger.error(f"❌ Error handling fill for {wallet}: {e}")
 
-            logger.info(f"🔄 Creating event for transaction: {tx_hash}")
+    async def _process_fill_async(self, msg: dict, wallet: str, tx_hash: str):
+        """Process the fill asynchronously."""
+        try:
             # Use the transaction fetcher to parse and create the event
             event = await self.transaction_fetcher.parse_and_create_event(msg, wallet)
-            print("EVENT!!!!!!!!!!")
-            print(event)
 
             if event:
-                logger.info(f"✅ Event created, processing transaction: {tx_hash}")
-                await self.pipeline.handle_event(event)
+                try:
+                    await self.pipeline.handle_event(event)
+                except Exception as e:
+                    if (
+                        "duplicate key" in str(e).lower()
+                        or "unique constraint" in str(e).lower()
+                    ):
+                        logger.info(
+                            f"🔄 Duplicate transaction detected via DB error: {tx_hash}"
+                        )
+                    else:
+                        # Re-raise other errors
+                        raise
             else:
                 logger.warning(f"❌ Failed to create event for {wallet}")
 
         except Exception as e:
-            logger.error(f"❌ Error handling fill for {wallet}: {e}")
+            logger.error(f"❌ Error processing fill for {wallet}: {e}")
             import traceback
 
             logger.error(f"Traceback: {traceback.format_exc()}")
@@ -106,9 +125,15 @@ class HyperliquidListener(ChainListener):
 
             # Get the first fill's hash
             fill = fills[0]
-            print(fills)
             return fill.get("hash", "")
 
         except Exception as e:
             logger.error(f"❌ Error extracting transaction hash: {e}")
             return ""
+
+    def stop(self):
+        """Stop the listener gracefully."""
+        self._running = False
+        self._stop_event.set()  # Signal the task to stop
+        if self.info:
+            self.info.disconnect_websocket()

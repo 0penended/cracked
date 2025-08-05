@@ -162,7 +162,7 @@ To create a new strategy:
 ```python
 from app.services.routers.base import TransactionStrategy, StrategyResult
 from app.services.routers.strategy_registry import register_strategy
-from app.models.domain.transactions import Strategy
+from app.models.domain.strategy import Strategy
 
 @register_strategy
 class MyCustomStrategy(TransactionStrategy):

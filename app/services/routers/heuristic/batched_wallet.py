@@ -1,7 +1,7 @@
 from typing import Dict
 from app.services.routers.base import TransactionStrategy, StrategyResult
 from app.models.domain.blockchain import UnifiedTransactionEvent, Action
-from app.models.domain.transactions import Strategy
+from app.models.domain.strategy import Strategy
 
 
 class BatchedWalletStrategy(TransactionStrategy):

@@ -24,41 +24,73 @@ class CoreTransactionPipeline:
         self.strategies_repository = strategies_repository
         self.transaction_repository = transaction_repository
 
+    def _get_transaction_type(self, event: UnifiedTransactionEvent) -> str:
+        """Get human-readable transaction type."""
+        action_map = {
+            "BUY": "BUY",
+            "SELL": "SELL",
+            "OPEN_LONG": "OPEN LONG",
+            "CLOSE_LONG": "CLOSE LONG",
+            "OPEN_SHORT": "OPEN SHORT",
+            "CLOSE_SHORT": "CLOSE SHORT",
+        }
+        return action_map.get(event.action.value, event.action.value)
+
+    def _get_token_type(self, event: UnifiedTransactionEvent) -> str:
+        """Get the token type based on the action."""
+        if event.action.value in ["BUY", "OPEN_LONG", "CLOSE_SHORT"]:
+            # For buy/long actions, show the token being received
+            return event.received_token_symbol
+        else:
+            # For sell/short actions, show the token being spent
+            return event.spent_token_symbol
+
+    def _get_transaction_value(self, event: UnifiedTransactionEvent) -> float:
+        """Get the transaction value in USD."""
+        if event.action.value in ["BUY", "OPEN_LONG", "CLOSE_SHORT"]:
+            # For buy/long actions, use the spent amount (USD spent)
+            return round(event.spent_token_amount * event.spent_token_price, 2)
+        else:
+            # For sell/short actions, use the received amount (USD received)
+            return round(event.received_token_quantity * event.received_token_price, 2)
+
     async def handle_event(self, event: UnifiedTransactionEvent) -> None:
         """Process a blockchain transaction event."""
         try:
-            logger.info(f"🔄 Processing transaction: {event.txn_hash}")
-            logger.debug(f"Transaction details: {event.action} on {event.chain}")
+            # Get transaction value for filtering
+            transaction_value = self._get_transaction_value(event)
 
-            logger.info(f"💾 Saving transaction to database: {event.txn_hash}")
-            try:
-                saved_transaction = (
-                    await self.transaction_repository.create_from_unified_event(event)
+            # Skip transactions under $1000
+            if transaction_value < 1000:
+                logger.info(
+                    f"⏭️ Skipping transaction {event.txn_hash} - value ${transaction_value:,.2f} below $1,000 threshold"
                 )
-                logger.info(f"✅ Transaction saved with ID: {saved_transaction.id_}")
-            except Exception as e:
-                logger.error(f"❌ Error saving transaction {event.txn_hash}: {e}")
-                import traceback
+                return
 
-                logger.error(f"Traceback: {traceback.format_exc()}")
-                raise
+            # Get token symbol based on action
+            token_symbol = (
+                event.received_token_symbol
+                if event.action.value in ["BUY", "OPEN_LONG", "CLOSE_SHORT"]
+                else event.spent_token_symbol
+            )
+
+            logger.info(
+                f"🔄 {event.action.value} {token_symbol} ${transaction_value:,.2f} on {event.chain}"
+            )
+            saved_transaction = (
+                await self.transaction_repository.create_from_unified_event(event)
+            )
 
             # Evaluate all strategies
             strategy_results = []
-            logger.info(f"🔍 Evaluating {len(self.strategies)} strategies")
             for strategy in self.strategies:
                 try:
-                    logger.info(f"Evaluating strategy: {strategy.description}")
                     result = await strategy.evaluate(event)
                     if result:
                         logger.info(
                             f"✅ Strategy {strategy.description} matched with confidence {result.confidence}"
                         )
                         strategy_results.append(result)
-                    else:
-                        logger.debug(
-                            f"❌ Strategy {strategy.description} did not match"
-                        )
                 except Exception as e:
                     logger.error(
                         f"Error evaluating strategy {strategy.description}: {e}"
@@ -66,33 +98,27 @@ class CoreTransactionPipeline:
 
             # Save strategy results
             if strategy_results:
-                logger.info(
-                    f"💾 Saving {len(strategy_results)} strategy results: {strategy_results}"
-                )
                 await self.strategies_repository.save_strategy_results(
                     saved_transaction.id_, strategy_results
                 )
-                logger.info(f"✅ Strategy results saved")
 
             # Check if we should send an alert based on the alert trigger
             if strategy_results and self.alert_trigger.should_alert(strategy_results):
-                logger.info(f"🚨 Alert trigger conditions met, sending alert")
-                await self.alert_router.send(strategy_results)
+                # Extract transaction details for the alert
+                transaction_type = self._get_transaction_type(event)
+                token_type = self._get_token_type(event)
+
+                await self.alert_router.send(
+                    strategy_results,
+                    event.wallet_address,
+                    transaction_type,
+                    transaction_value,
+                    token_type,
+                )
                 logger.info(
                     f"Alert sent for transaction {event.txn_hash} with {len(strategy_results)} strategy matches"
                 )
-            elif strategy_results:
-                logger.info(
-                    f"Strategy matches found for transaction {event.txn_hash} ({len(strategy_results)} matches) but alert trigger conditions not met"
-                )
-
-            logger.info(
-                f"✅ Completed processing transaction {event.txn_hash} with {len(strategy_results)} strategy matches"
-            )
 
         except Exception as e:
             logger.error(f"❌ Error processing transaction {event.txn_hash}: {e}")
-            import traceback
-
-            logger.error(f"Traceback: {traceback.format_exc()}")
             raise

@@ -14,54 +14,58 @@ class TelegramAlertRouter(AlertRouter):
         self.chat_id = chat_id
         self.chain_name = chain_name
 
-    async def send(self, strategy_results: List[StrategyResult]):
+    async def send(
+        self,
+        strategy_results: List[StrategyResult],
+        wallet_address: str,
+        transaction_type: str,
+        transaction_value: float,
+        token_type: str,
+    ):
         """Send alert to Telegram."""
         if not self.telegram_client or not self.chat_id:
             print("Telegram configuration missing")
             return
 
         # Build message
-        message = self._build_message(strategy_results)
+        message = self._build_message(
+            strategy_results,
+            wallet_address,
+            transaction_type,
+            transaction_value,
+            token_type,
+        )
 
         # Send to Telegram
         await self.telegram_client.send_message_async(
             message, self.chat_id, parse_mode="Markdown"
         )
 
-    def _build_message(self, strategy_results: List[StrategyResult]) -> str:
+    def _build_message(
+        self,
+        strategy_results: List[StrategyResult],
+        wallet_address: str,
+        transaction_type: str,
+        transaction_value: float,
+        token_type: str,
+    ) -> str:
         """Build alert message for Telegram."""
-        # Get the first strategy result to extract transaction info
-        # Note: All strategy results should be from the same transaction
         if not strategy_results:
             return "No strategy results to display"
 
-        # Extract transaction info from the first result's metadata
-        first_result = strategy_results[0]
+        # Truncate wallet address for readability
+        short_wallet = wallet_address[:10] + "..." + wallet_address[-6:]
 
-        # Try to get transaction info from metadata
-        metadata = first_result.metadata or {}
+        # Build the message
+        message = f"🚨 {self.chain_name.upper()} ALERT 🚨\n\n"
+        message += f"💰 Transaction Value: ${transaction_value:,.2f} USD\n"
+        message += f"📊 Type: {transaction_type}\n"
+        message += f"🪙 Token: {token_type}\n"
+        message += f"👤 Wallet: {short_wallet}\n"
 
-        # Extract USD value and token info from metadata
-        usd_value = metadata.get("usd_value", 0)
-        token_symbol = metadata.get("token_symbol", "Unknown")
-        token_quantity = metadata.get("token_quantity", 0)
-        token_price = metadata.get("token_price", 0)
-
-        # If metadata doesn't have the info, we can't display it properly
-        if not all([usd_value, token_symbol, token_quantity, token_price]):
-            message = f"🚨 {self.chain_name.upper()} ALERT 🚨\n\n"
-            message += f"💰 **Transaction Value**: ${usd_value:,.2f} USD\n"
-            message += f"📊 **Amount**: {token_quantity:,.4f} {token_symbol}\n"
-            message += f"💵 **Price**: ${token_price:,.6f} USD\n"
-        else:
-            message = f"🚨 {self.chain_name.upper()} ALERT 🚨\n\n"
-            message += f"💰 **Transaction Value**: ${usd_value:,.2f} USD\n"
-            message += f"📊 **Amount**: {token_quantity:,.4f} {token_symbol}\n"
-            message += f"💵 **Price**: ${token_price:,.6f} USD\n"
-
-        message += f"\n🎯 **Triggers**:\n"
+        message += f"\n🎯 Triggers:\n"
         for i, result in enumerate(strategy_results, 1):
-            confidence_pct = result.confidence * 100
-            message += f"{i}. {result.type.value.replace('_', ' ').title()} ({confidence_pct:.1f}%) - {result.explanation}\n"
+            strategy_name = result.type.value.replace("_", " ").title()
+            message += f"{i}. {strategy_name}\n"
 
         return message

@@ -1,3 +1,4 @@
+import asyncio
 from typing import Callable
 
 from fastapi import FastAPI
@@ -20,7 +21,7 @@ def create_start_app_handler(
         app.state.blockchain_service = blockchain_service
 
         try:
-            await blockchain_service.start()
+            asyncio.create_task(blockchain_service.start())
             logger.info("✅ FastAPI app started with blockchain monitoring")
         except Exception as e:
             logger.error(f"❌ Failed to start blockchain monitoring: {e}")

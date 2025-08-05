@@ -115,6 +115,7 @@ class TokenDataCache:
             "expired_entries": expired_entries,
             "valid_entries": total_entries - expired_entries,
             "default_ttl": self._default_ttl,
+            "cache_keys": list(self._cache.keys()),
         }
 
 

@@ -20,6 +20,7 @@ from app.services.routers.strategy_factory import (
 )
 from app.db.repositories.transactions import TransactionsRepository
 from app.db.repositories.strategies import StrategiesRepository
+from app.constants.wallets import get_solana_addresses, get_hyperliquid_addresses
 
 
 class BlockchainMonitorService:
@@ -36,7 +37,6 @@ class BlockchainMonitorService:
         self.solana_listener: Optional[SolanaListener] = None
         self.hyperliquid_listener: Optional[HyperliquidListener] = None
         self._running = False
-        self._task: Optional[asyncio.Task] = None
 
     async def start(self) -> None:
         """Start the blockchain monitoring service."""
@@ -47,11 +47,12 @@ class BlockchainMonitorService:
         logger.info("🚀 Starting blockchain monitoring service...")
 
         try:
-            # Create database connection
-            self.db_conn = await asyncpg.connect(self.settings.database_url)
-            self.strategies_repository = StrategiesRepository(self.db_conn)
-            self.transaction_repository = TransactionsRepository(self.db_conn)
-
+            # Create database connection pool
+            self.db_pool = await asyncpg.create_pool(
+                self.settings.database_url, min_size=5, max_size=20
+            )
+            self.strategies_repository = StrategiesRepository(self.db_pool)
+            self.transaction_repository = TransactionsRepository(self.db_pool)
             # Create clients
             self.coinmarketcap_client = CoinMarketCapClient(
                 api_key=self.settings.coinmarketcap_api_key,
@@ -64,8 +65,6 @@ class BlockchainMonitorService:
             hyperliquid_strategies = await HyperliquidStrategies.create_all(
                 self.strategies_repository
             )
-
-            # Create alert trigger for Hyperliquid (require at least 2 strategies to match)
             hyperliquid_alert_trigger = AlertTriggerStrategyMatchQuantity(quantity=2)
 
             pipeline_hyperliquid = CoreTransactionPipeline(
@@ -87,18 +86,13 @@ class BlockchainMonitorService:
                 pipeline=pipeline_hyperliquid,
                 transaction_fetcher=hyperliquid_transaction_fetcher,
             )
-            self.hyperliquid_listener.subscribe_wallets(
-                ["0x576A41Ba10520568811E1465CABb52aBfE6beAdc"]
-            )
+            self.hyperliquid_listener.subscribe_wallets(get_hyperliquid_addresses())
 
-            # Create Solana pipeline with type-safe strategies (auto-registered in DB)
+            # Solana
             solana_strategies = await SolanaStrategies.create_all(
                 self.strategies_repository
             )
-
-            # Create alert trigger for Solana (require at least 1 strategy to match)
-            solana_alert_trigger = AlertTriggerStrategyMatchQuantity(quantity=3)
-
+            solana_alert_trigger = AlertTriggerStrategyMatchQuantity(quantity=2)
             pipeline_solana = CoreTransactionPipeline(
                 strategies=solana_strategies,
                 alert_router=TelegramAlertRouter(
@@ -119,14 +113,12 @@ class BlockchainMonitorService:
                 transaction_fetcher=solana_transaction_fetcher,
                 pipeline_handler=pipeline_solana,
             )
-            self.solana_listener.subscribe_wallets(
-                ["EgaYt5xZK4qeWphbKD42oxzbeArYkWY9WCxrQBk9F6r5"]
-            )
+            self.solana_listener.subscribe_wallets(get_solana_addresses())
 
             # Start the monitoring task
             self._running = True
-            self._task = asyncio.create_task(self._run_monitoring())
-
+            # Run monitoring in background task
+            asyncio.create_task(self._run_monitoring())
             logger.info("✅ Blockchain monitoring service started successfully")
 
         except Exception as e:
@@ -138,64 +130,39 @@ class BlockchainMonitorService:
         """Stop the blockchain monitoring service."""
         if not self._running:
             return
-
         logger.info("🛑 Stopping blockchain monitoring service...")
-
         self._running = False
-
-        # Cancel the monitoring task
-        if self._task and not self._task.done():
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
-
-        # Close database connection
-        if self.db_conn:
-            await self.db_conn.close()
-            self.db_conn = None
+        # Close database connection pool
+        if self.db_pool:
+            await self.db_pool.close()
+            self.db_pool = None
 
         logger.info("✅ Blockchain monitoring service stopped")
 
     async def _run_monitoring(self) -> None:
         """Run the monitoring loop."""
-        logger.info("🔄 Starting monitoring loop...")
-
         try:
-            # Start listeners concurrently
-            tasks = []
+            # Start listeners - they can run sequentially since they're independent
+            # Each listener manages its own websocket connection
+            listener_tasks = []
 
             if self.hyperliquid_listener:
                 logger.info("🔗 Starting Hyperliquid listener...")
-                hyperliquid_task = asyncio.create_task(self.hyperliquid_listener.run())
-                tasks.append(hyperliquid_task)
+                listener_tasks.append(self.hyperliquid_listener.run())
                 logger.info("✅ Hyperliquid listener started")
 
             if self.solana_listener:
                 logger.info("🔗 Starting Solana listener...")
-                solana_task = asyncio.create_task(self.solana_listener.run())
-                tasks.append(solana_task)
+                listener_tasks.append(self.solana_listener.run())
                 logger.info("✅ Solana listener started")
 
-            # Keep the service running and wait for all listeners
-            while self._running:
-                await asyncio.sleep(1)
+            # Run all listeners concurrently - they're independent websocket connections
+            await asyncio.gather(*listener_tasks, return_exceptions=True)
 
-            # Cancel all tasks when stopping
-            for task in tasks:
-                if not task.done():
-                    task.cancel()
-                    try:
-                        await task
-                    except asyncio.CancelledError:
-                        pass
-
+        except asyncio.CancelledError:
+            logger.info("🛑 Monitoring loop cancelled")
         except Exception as e:
             logger.error(f"❌ Error in monitoring loop: {e}")
-            import traceback
-
-            logger.error(f"Traceback: {traceback.format_exc()}")
             raise
         finally:
             logger.info("🛑 Monitoring loop stopped")
