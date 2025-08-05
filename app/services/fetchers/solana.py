@@ -29,7 +29,6 @@ class SolanaTransactionFetcher:
             # For values >= 1 cent, round to 2 decimal places
             return round(price, 2)
         else:
-            # For fractional values (< 1 cent), keep full float precision
             return price
 
     def _format_price_change(self, price_change: float) -> float:
@@ -202,20 +201,21 @@ class SolanaTransactionFetcher:
             txn_hash=signature,
             timestamp=int(time.time() * 1000),
             action=action,
-            recieved_token_id=received_token["mint"] if received_token else None,
-            recieved_token_symbol=received_symbol,
-            recieved_token_quantity=received_token["amount"] if received_token else 0.0,
-            recieved_token_price=received_price,
-            recieved_token_volume_h24=received_volume,
-            recieved_token_price_change_h24=self._format_price_change(
+            received_token_id=received_token["mint"] if received_token else None,
+            received_token_symbol=received_symbol,
+            received_token_quantity=received_token["amount"] if received_token else 0.0,
+            received_token_price=received_price,
+            received_token_volume_h24=received_volume,
+            received_token_price_change_h24=self._format_price_change(
                 self._extract_price_change_24h(received_pair_data)
             ),
-            recieved_token_liquidity=received_liquidity,
-            recieved_token_created_at=(
+            received_token_liquidity=received_liquidity,
+            received_token_created_at=(
                 int(received_pair_data.get("pairCreatedAt", 0) / 1000)
                 if received_pair_data
                 else 0
             ),
+            received_token_marketcap=received_liquidity,  # Use liquidity as marketcap for now
             spent_token_id=spent_token["mint"] if spent_token else None,
             spent_token_symbol=spent_symbol,
             spent_token_amount=spent_token["amount"] if spent_token else 0.0,
@@ -230,6 +230,7 @@ class SolanaTransactionFetcher:
                 if spent_pair_data
                 else 0
             ),
+            spent_token_marketcap=spent_liquidity,  # Use liquidity as marketcap for now
         )
 
         return event

@@ -51,4 +51,30 @@ class Transactions(TypedTable):
     spent_token_created_at: Optional[int]  # BIGINT in database, int in Python
 
 
+class Strategies(TypedTable):
+    __table__ = "strategies"
+
+    id: int
+    name: str
+    strategy_type: str  # Enum value from Strategy enum
+    description: str
+    parameters: Optional[str]  # JSON string of strategy parameters
+    is_active: bool
+    created_at: int  # BIGINT timestamp
+
+
+class TransactionStrategies(TypedTable):
+    __table__ = "transaction_strategies"
+
+    id: int
+    transaction_id: int
+    strategy_id: int
+    confidence: float
+    explanation: str
+    metadata: Optional[str]  # JSON string
+    created_at: int  # BIGINT timestamp
+
+
 transactions = Transactions()
+strategies = Strategies()
+transaction_strategies = TransactionStrategies()

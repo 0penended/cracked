@@ -33,14 +33,35 @@ class SolanaListener(ChainListener):
         self.recent_signatures: Set[str] = set()
         self.max_signatures = max_signatures
         self.conn = None
+        self._running = True
 
     def subscribe_wallets(self, addresses: list[str]):
         """Subscribe to wallet addresses for monitoring."""
         for addr in addresses:
             self.addresses.add(addr)
 
+    def stop(self):
+        """Stop the listener gracefully."""
+        self._running = False
+        if self.conn:
+            # Schedule connection close
+            asyncio.create_task(self.conn.close())
+
     async def run(self):
         """Start the WebSocket connection and monitor for transactions."""
+        try:
+            await self._connect_and_monitor()
+        except Exception as e:
+            print(f"[Solana] WebSocket error: {e}")
+            # Only reconnect if we're still supposed to be running
+            if self._running:
+                print("[Solana] Attempting to reconnect in 5 seconds...")
+                await asyncio.sleep(5)
+                await self.run()  # Recursive call to reconnect
+
+    async def _connect_and_monitor(self):
+        """Connect to websocket and monitor for transactions."""
+        # Connect to websocket
         self.conn = await ws_connect(self.ws_url)
 
         # Subscribe to logs for each address
@@ -50,6 +71,8 @@ class SolanaListener(ChainListener):
                 filter_=RpcTransactionLogsFilterMentions(pubkey=pk),
                 commitment="confirmed",
             )
+
+        print("[Solana] WebSocket connected and subscribed")
 
         try:
             async for msgs in self.conn:
@@ -79,10 +102,14 @@ class SolanaListener(ChainListener):
                         )
 
         except Exception as e:
-            print(f"[Solana] WebSocket error: {e}")
+            print(f"[Solana] WebSocket connection error: {e}")
+            raise
         finally:
             if self.conn:
-                await self.conn.close()
+                try:
+                    await self.conn.close()
+                except Exception as e:
+                    print(f"[Solana] Error closing connection: {e}")
 
     def _is_relevant_log(self, logs: list[str]) -> bool:
         """Check if transaction logs contain relevant keywords."""

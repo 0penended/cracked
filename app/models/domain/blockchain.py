@@ -31,13 +31,13 @@ class UnifiedTransactionEvent:
     action: Action
 
     # Asset acquired or traded (all required fields first)
-    recieved_token_symbol: str
-    recieved_token_quantity: float
-    recieved_token_price: float  # USD price per unit
-    recieved_token_volume_h24: float
-    recieved_token_price_change_h24: float
-    recieved_token_liquidity: float
-    recieved_token_created_at: int
+    received_token_symbol: str
+    received_token_quantity: float
+    received_token_price: float  # USD price per unit
+    received_token_volume_h24: float
+    received_token_price_change_h24: float
+    received_token_liquidity: float
+    received_token_created_at: int
 
     # Asset spent or received (all required fields first)
     spent_token_symbol: str
@@ -49,5 +49,7 @@ class UnifiedTransactionEvent:
     spent_token_created_at: int
 
     # Optional fields (all default arguments at the end)
-    recieved_token_id: Optional[str] = None  # Contract address or token ID
+    received_token_id: Optional[str] = None  # Contract address or token ID
+    received_token_marketcap: Optional[float] = None  # Market cap for received token
     spent_token_id: Optional[str] = None  # Contract address or token ID
+    spent_token_marketcap: Optional[float] = None  # Market cap for spent token

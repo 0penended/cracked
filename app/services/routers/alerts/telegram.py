@@ -1,5 +1,5 @@
-from typing import Dict, Any
-from app.services.routers.base import AlertRouter, AlertResult
+from typing import List
+from app.services.routers.base import AlertRouter, StrategyResult
 from app.models.domain.blockchain import UnifiedTransactionEvent, Action
 from app.clients.TelegramClient import TelegramClient
 
@@ -14,14 +14,27 @@ class TelegramAlertRouter(AlertRouter):
         self.chat_id = chat_id
         self.chain_name = chain_name
 
-    async def send(self, event: UnifiedTransactionEvent, results: list[AlertResult]):
+    async def send(
+        self,
+        strategy_results: List[StrategyResult],
+        wallet_address: str,
+        transaction_type: str,
+        transaction_value: float,
+        token_type: str,
+    ):
         """Send alert to Telegram."""
         if not self.telegram_client or not self.chat_id:
             print("Telegram configuration missing")
             return
 
         # Build message
-        message = self._build_message(event, results)
+        message = self._build_message(
+            strategy_results,
+            wallet_address,
+            transaction_type,
+            transaction_value,
+            token_type,
+        )
 
         # Send to Telegram
         await self.telegram_client.send_message_async(
@@ -29,33 +42,30 @@ class TelegramAlertRouter(AlertRouter):
         )
 
     def _build_message(
-        self, event: UnifiedTransactionEvent, results: list[AlertResult]
+        self,
+        strategy_results: List[StrategyResult],
+        wallet_address: str,
+        transaction_type: str,
+        transaction_value: float,
+        token_type: str,
     ) -> str:
         """Build alert message for Telegram."""
-        # Calculate USD value based on transaction action
-        if event.action in [Action.BUY, Action.OPEN_LONG, Action.CLOSE_SHORT]:
-            usd_value = event.recieved_token_quantity * event.recieved_token_price
-            token_symbol = event.recieved_token_symbol
-            token_quantity = event.recieved_token_quantity
-        elif event.action in [Action.SELL, Action.CLOSE_LONG, Action.OPEN_SHORT]:
-            usd_value = event.spent_token_amount * event.spent_token_price
-            token_symbol = event.spent_token_symbol
-            token_quantity = event.spent_token_amount
-        else:
-            usd_value = event.recieved_token_quantity * event.recieved_token_price
-            token_symbol = event.recieved_token_symbol
-            token_quantity = event.recieved_token_quantity
+        if not strategy_results:
+            return "No strategy results to display"
 
+        # Truncate wallet address for readability
+        short_wallet = wallet_address[:10] + "..." + wallet_address[-6:]
+
+        # Build the message
         message = f"🚨 {self.chain_name.upper()} ALERT 🚨\n\n"
-        message += f"💰 **Transaction Value**: ${usd_value:,.2f} USD\n"
-        message += f"🔗 **Wallet**: `{event.wallet_address}`\n"
-        message += f"📝 **Transaction**: `{event.txn_hash}`\n"
-        message += f"⚡ **Action**: {event.action.value}\n"
-        message += f"📊 **Amount**: {token_quantity:,.4f} {token_symbol}\n"
-        message += f"💵 **Price**: ${event.recieved_token_price:,.6f} USD\n"
+        message += f"💰 Transaction Value: ${transaction_value:,.2f} USD\n"
+        message += f"📊 Type: {transaction_type}\n"
+        message += f"🪙 Token: {token_type}\n"
+        message += f"👤 Wallet: {short_wallet}\n"
 
-        message += f"\n🎯 **Triggers**:\n"
-        for i, result in enumerate(results, 1):
-            message += f"{i}. Score: {result.score:.2f} - {result.explanation}\n"
+        message += f"\n🎯 Triggers:\n"
+        for i, result in enumerate(strategy_results, 1):
+            strategy_name = result.type.value.replace("_", " ").title()
+            message += f"{i}. {strategy_name}\n"
 
         return message
