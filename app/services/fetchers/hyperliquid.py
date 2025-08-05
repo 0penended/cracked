@@ -1,5 +1,5 @@
-import asyncio
 import time
+import datetime
 from typing import Optional, Dict, Any
 
 from app.clients.CoinMarketCapClient import CoinMarketCapClient
@@ -169,7 +169,10 @@ class HyperliquidTransactionFetcher:
         market_data = {}
         if symbols_to_fetch:
             try:
-                prices_data = self.coinmarketcap_client.get_prices(symbols_to_fetch)
+                prices_data = await self.coinmarketcap_client.get_prices(
+                    symbols_to_fetch
+                )
+                print(prices_data)
                 if prices_data:
                     # The response structure has numeric keys, so we need to find the right data
                     for symbol in symbols_to_fetch:
@@ -198,8 +201,6 @@ class HyperliquidTransactionFetcher:
             received_liquidity = self._round_market_cap_volume(
                 float(quote_data.get("market_cap", 0))
             )
-            # Convert ISO date string to Unix timestamp in seconds
-            import datetime
 
             date_str = market_data[received_symbol].get(
                 "date_added", "2010-01-01T00:00:00.000Z"
@@ -253,14 +254,14 @@ class HyperliquidTransactionFetcher:
             txn_hash=tx_hash,
             timestamp=timestamp,
             action=action,
-            recieved_token_id=None,  # Hyperliquid doesn't provide contract addresses
-            recieved_token_symbol=received_symbol,
-            recieved_token_quantity=received_amount,
-            recieved_token_price=received_price,
-            recieved_token_volume_h24=received_volume_h24,
-            recieved_token_price_change_h24=received_price_change_h24,
-            recieved_token_liquidity=received_liquidity,
-            recieved_token_created_at=received_created_at,
+            received_token_id=None,  # Hyperliquid doesn't provide contract addresses
+            received_token_symbol=received_symbol,
+            received_token_quantity=received_amount,
+            received_token_price=received_price,
+            received_token_volume_h24=received_volume_h24,
+            received_token_price_change_h24=received_price_change_h24,
+            received_token_liquidity=received_liquidity,
+            received_token_created_at=received_created_at,
             spent_token_id=None,  # Hyperliquid doesn't provide contract addresses
             spent_token_symbol=spent_symbol,
             spent_token_amount=spent_amount,

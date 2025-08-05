@@ -1,4 +1,5 @@
-from typing import Optional
+from typing import Optional, Dict, Any
+import json
 
 from pydantic import validator
 
@@ -47,5 +48,32 @@ class Transaction(RWModel):
         return v
 
 
+class TransactionStrategy(RWModel):
+    """Model for storing strategy evaluation results."""
+
+    transaction_id: int
+    strategy_id: int
+    confidence: float
+    explanation: str
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: Optional[int] = None
+
+    @validator("confidence")
+    def validate_confidence(cls, v):
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("Confidence must be between 0.0 and 1.0")
+        return v
+
+    @validator("metadata", pre=True)
+    def validate_metadata(cls, v):
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
+
+
 class TransactionInDB(IDModelMixin, Transaction):
+    pass
+
+
+class TransactionStrategyInDB(IDModelMixin, TransactionStrategy):
     pass

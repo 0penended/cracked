@@ -1,0 +1,13 @@
+#!/bin/bash
+# Script to regenerate queries.pyi type stubs
+
+echo "🔄 Regenerating queries.pyi type stubs..."
+python scripts/generate-queries-types.py
+
+if [ $? -eq 0 ]; then
+    echo "✅ Successfully regenerated queries.pyi"
+    echo "📁 Updated: app/db/queries/queries.pyi"
+else
+    echo "❌ Failed to regenerate queries.pyi"
+    exit 1
+fi 

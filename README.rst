@@ -58,6 +58,21 @@ To run the web application in debug use::
     alembic upgrade head
     uvicorn app.main:app --reload
 
+Development Scripts
+------------------
+
+This project includes several development scripts in the ``scripts/`` directory:
+
+- ``./scripts/format`` - Format code using black and isort
+- ``./scripts/lint`` - Run linting checks
+- ``./scripts/test`` - Run tests
+- ``./scripts/test-cov-html`` - Run tests with HTML coverage report
+- ``./scripts/generate-types`` - Regenerate queries.pyi type stubs from SQL files
+
+To regenerate the database query type stubs after modifying SQL files::
+
+    ./scripts/generate-types
+
 If you run into the following error in your docker container:
 
    sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) could not connect to server: No such file or directory

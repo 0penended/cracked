@@ -1,6 +1,7 @@
 import asyncio
 import time
 from typing import Set
+from loguru import logger
 
 from hyperliquid.info import Info
 from hyperliquid.utils import constants
@@ -35,7 +36,9 @@ class HyperliquidListener(ChainListener):
     async def run(self):
         """Subscribe to userFills for each wallet and keep the loop alive."""
         try:
+            logger.info(f"🔗 Subscribing to {len(self.addresses)} Hyperliquid wallets")
             for addr in self.addresses:
+                logger.info(f"📡 Subscribing to wallet: {addr}")
                 self.info.subscribe(
                     {"type": "userFills", "user": addr},
                     lambda msg, address=addr: asyncio.run_coroutine_threadsafe(
@@ -43,40 +46,52 @@ class HyperliquidListener(ChainListener):
                     ),
                 )
 
+            logger.info("✅ Hyperliquid subscriptions active, keeping alive...")
             while True:
                 await asyncio.sleep(3600)  # Keep alive
 
         except Exception as e:
-            print(f"[Hyperliquid] Listener error: {e}")
+            logger.error(f"❌ Hyperliquid listener error: {e}")
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
     async def _handle_fill(self, msg: dict, wallet: str):
         """Handle individual UserFill event."""
         try:
+            logger.info(f"📨 Received Hyperliquid fill for wallet: {wallet}")
+
             # Extract transaction hash
             tx_hash = self._get_tx_hash(msg)
 
             if not tx_hash:
-                print(f"[Hyperliquid] No transaction hash found for {wallet}")
+                logger.warning(f"⚠️ No transaction hash found for {wallet}")
                 return
+
+            logger.info(f"🔍 Processing transaction: {tx_hash} for wallet: {wallet}")
 
             # Check database (persistent across restarts)
-            if await self.pipeline.db_writer.transaction_exists(tx_hash):
-                # Skip duplicate transaction - no need for verbose logging
+            if await self.pipeline.transaction_repository.transaction_exists(tx_hash):
+                logger.info(f"⏭️ Skipping duplicate transaction: {tx_hash}")
                 return
 
+            logger.info(f"🔄 Creating event for transaction: {tx_hash}")
             # Use the transaction fetcher to parse and create the event
             event = await self.transaction_fetcher.parse_and_create_event(msg, wallet)
+            print("EVENT!!!!!!!!!!")
+            print(event)
 
             if event:
+                logger.info(f"✅ Event created, processing transaction: {tx_hash}")
                 await self.pipeline.handle_event(event)
             else:
-                print(f"[Hyperliquid] Failed to create event for {wallet}")
+                logger.warning(f"❌ Failed to create event for {wallet}")
 
         except Exception as e:
-            print(f"[Hyperliquid] Error handling fill for {wallet}: {e}")
+            logger.error(f"❌ Error handling fill for {wallet}: {e}")
             import traceback
 
-            traceback.print_exc()
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
     def _get_tx_hash(self, msg: dict) -> str:
         """Extract transaction hash from the websocket message."""
@@ -91,8 +106,9 @@ class HyperliquidListener(ChainListener):
 
             # Get the first fill's hash
             fill = fills[0]
+            print(fills)
             return fill.get("hash", "")
 
         except Exception as e:
-            print(f"[Hyperliquid] Error extracting transaction hash: {e}")
+            logger.error(f"❌ Error extracting transaction hash: {e}")
             return ""
