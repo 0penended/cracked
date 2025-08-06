@@ -1,4 +1,6 @@
 import httpx
+import asyncio
+import time
 from typing import List, Dict, Optional, Any
 import logging
 from .cache import token_cache
@@ -12,6 +14,8 @@ class CoinMarketCapClient:
     ):
         self.api_key = api_key
         self.base_url = base_url
+        self.last_request_time = 0
+        self.min_request_interval = 0.1  # 100ms between requests (10 requests/second)
         # Use async client with connection pooling for better performance
         self.client = httpx.AsyncClient(
             headers={
@@ -38,7 +42,7 @@ class CoinMarketCapClient:
         for symbol in symbols:
             cache_key = f"coinmarketcap:{symbol}:{convert}"
             cached_symbol_data = await token_cache.get(cache_key)
-            if cached_symbol_data:
+            if cached_symbol_data is not None:
                 cached_data[symbol] = cached_symbol_data
             else:
                 uncached_symbols.append(symbol)
@@ -54,11 +58,23 @@ class CoinMarketCapClient:
             "convert": convert,
         }
 
+        # Rate limiting - ensure minimum time between requests
+        current_time = time.time()
+        time_since_last = current_time - self.last_request_time
+        if time_since_last < self.min_request_interval:
+            sleep_time = self.min_request_interval - time_since_last
+            logger.info(f"[CMC] Rate limiting: sleeping {sleep_time:.2f}s")
+            await asyncio.sleep(sleep_time)
+
         try:
+            self.last_request_time = time.time()
             response = await self.client.get(url, params=params)
             response.raise_for_status()
             data = response.json()
             api_data = data.get("data", {})
+            print("!!!uncached_symbols!!!", uncached_symbols)
+            print("!!!cached_data!!!", cached_data)
+            print("!!!token_cache!!!", token_cache.get_stats().get("cache_keys"))
 
             # Cache each symbol individually and add to result
             for symbol in uncached_symbols:
@@ -74,7 +90,13 @@ class CoinMarketCapClient:
                     await token_cache.set(cache_key, symbol_data)
                     cached_data[symbol] = symbol_data
                 else:
-                    logger.warning(f"No data found for symbol: {symbol}")
+                    logger.warning(
+                        f"No data found for symbol: {symbol} - caching empty object"
+                    )
+                    # Cache empty object to prevent future API calls for unsupported symbols
+                    cache_key = f"coinmarketcap:{symbol}:{convert}"
+                    await token_cache.set(cache_key, {})
+                    cached_data[symbol] = {}
 
             return cached_data
 

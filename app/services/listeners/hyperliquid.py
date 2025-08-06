@@ -37,7 +37,6 @@ class HyperliquidListener(ChainListener):
     async def run(self):
         """Subscribe to userFills for each wallet and keep the connection alive."""
         try:
-            # Store the event loop for use in callbacks
             self._loop = asyncio.get_running_loop()
 
             logger.info(f"🔗 Subscribing to {len(self.addresses)} Hyperliquid wallets")
@@ -48,8 +47,6 @@ class HyperliquidListener(ChainListener):
                     subscription,
                     lambda msg, address=addr: self._handle_fill_sync(msg, address),
                 )
-
-            logger.info("✅ Hyperliquid subscriptions created")
 
             # Wait for stop signal - much more efficient than polling
             await self._stop_event.wait()

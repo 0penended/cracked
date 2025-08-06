@@ -91,6 +91,10 @@ class HyperliquidTransactionFetcher:
                 print(f"[Hyperliquid] Unknown direction '{direction}' for {wallet}")
                 return None
 
+            # Too much noise initially
+            if action in [Action.BUY, Action.SELL]:
+                return None
+
             # Determine received and spent assets based on action
             if action in [Action.BUY, Action.OPEN_LONG]:
                 # Buying the asset

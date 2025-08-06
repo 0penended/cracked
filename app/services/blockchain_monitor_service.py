@@ -119,7 +119,6 @@ class BlockchainMonitorService:
             self._running = True
             # Run monitoring in background task
             asyncio.create_task(self._run_monitoring())
-            logger.info("✅ Blockchain monitoring service started successfully")
 
         except Exception as e:
             logger.error(f"❌ Failed to start blockchain monitoring service: {e}")
@@ -147,12 +146,10 @@ class BlockchainMonitorService:
             listener_tasks = []
 
             if self.hyperliquid_listener:
-                logger.info("🔗 Starting Hyperliquid listener...")
                 listener_tasks.append(self.hyperliquid_listener.run())
                 logger.info("✅ Hyperliquid listener started")
 
             if self.solana_listener:
-                logger.info("🔗 Starting Solana listener...")
                 listener_tasks.append(self.solana_listener.run())
                 logger.info("✅ Solana listener started")
 
