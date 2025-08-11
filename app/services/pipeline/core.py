@@ -33,12 +33,14 @@ class CoreTransactionPipeline:
             "CLOSE_LONG": "CLOSE LONG",
             "OPEN_SHORT": "OPEN SHORT",
             "CLOSE_SHORT": "CLOSE SHORT",
+            "LONG_TO_SHORT": "LONG > SHORT",
+            "SHORT_TO_LONG": "SHORT > LONG",
         }
         return action_map.get(event.action.value, event.action.value)
 
     def _get_token_type(self, event: UnifiedTransactionEvent) -> str:
         """Get the token type based on the action."""
-        if event.action.value in ["BUY", "OPEN_LONG", "CLOSE_SHORT"]:
+        if event.action.value in ["BUY", "OPEN_LONG", "CLOSE_SHORT", "SHORT_TO_LONG"]:
             # For buy/long actions, show the token being received
             return event.received_token_symbol
         else:
@@ -47,7 +49,7 @@ class CoreTransactionPipeline:
 
     def _get_transaction_value(self, event: UnifiedTransactionEvent) -> float:
         """Get the transaction value in USD."""
-        if event.action.value in ["BUY", "OPEN_LONG", "CLOSE_SHORT"]:
+        if event.action.value in ["BUY", "OPEN_LONG", "CLOSE_SHORT", "SHORT_TO_LONG"]:
             # For buy/long actions, use the spent amount (USD spent)
             return round(event.spent_token_amount * event.spent_token_price, 2)
         else:
@@ -63,19 +65,20 @@ class CoreTransactionPipeline:
             # Skip transactions under $1000
             if transaction_value < 1000:
                 logger.info(
-                    f"⏭️ Skipping transaction {event.txn_hash} - value ${transaction_value:,.2f} below $1,000 threshold"
+                    f"⏭️ Skipping transaction: {event.action.value} {self._get_token_type(event)} - value ${transaction_value:,.2f} below $1,000 threshold by {event.wallet_address}"
                 )
                 return
 
             # Get token symbol based on action
             token_symbol = (
                 event.received_token_symbol
-                if event.action.value in ["BUY", "OPEN_LONG", "CLOSE_SHORT"]
+                if event.action.value
+                in ["BUY", "OPEN_LONG", "CLOSE_SHORT", "SHORT_TO_LONG"]
                 else event.spent_token_symbol
             )
 
             logger.info(
-                f"🔄 {event.action.value} {token_symbol} ${transaction_value:,.2f} on {event.chain}"
+                f"🔄 {event.action.value} {token_symbol} ${transaction_value:,.2f} on {event.chain} by {event.wallet_address}"
             )
             saved_transaction = (
                 await self.transaction_repository.create_from_unified_event(event)
