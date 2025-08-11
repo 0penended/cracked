@@ -9,6 +9,7 @@ from app.services.listeners.solana import SolanaListener
 from app.services.fetchers.solana import SolanaTransactionFetcher
 from app.services.listeners.hyperliquid import HyperliquidListener
 from app.services.fetchers.hyperliquid import HyperliquidTransactionFetcher
+from app.services.utils.activity_limiter import WalletActivityLimiter
 from app.clients.CoinMarketCapClient import CoinMarketCapClient
 from app.clients.DexScreenerClient import DexScreenerClient
 from app.clients.TelegramClient import TelegramClient
@@ -85,6 +86,10 @@ class BlockchainMonitorService:
             self.hyperliquid_listener = HyperliquidListener(
                 pipeline=pipeline_hyperliquid,
                 transaction_fetcher=hyperliquid_transaction_fetcher,
+                activity_limiter=WalletActivityLimiter(
+                    activity_window_seconds=60,
+                    max_tx_per_window=15,
+                ),
             )
             self.hyperliquid_listener.subscribe_wallets(get_hyperliquid_addresses())
 
@@ -112,6 +117,10 @@ class BlockchainMonitorService:
                 ws_url=self.settings.solana_ws_url,
                 transaction_fetcher=solana_transaction_fetcher,
                 pipeline_handler=pipeline_solana,
+                activity_limiter=WalletActivityLimiter(
+                    activity_window_seconds=60,
+                    max_tx_per_window=15,
+                ),
             )
             self.solana_listener.subscribe_wallets(get_solana_addresses())
 
@@ -160,6 +169,11 @@ class BlockchainMonitorService:
             logger.info("🛑 Monitoring loop cancelled")
         except Exception as e:
             logger.error(f"❌ Error in monitoring loop: {e}")
+            # Mark listeners as not running on fatal loop error
+            if self.hyperliquid_listener:
+                self.hyperliquid_listener._running = False
+            if self.solana_listener:
+                self.solana_listener._running = False
             raise
         finally:
             logger.info("🛑 Monitoring loop stopped")
@@ -168,3 +182,16 @@ class BlockchainMonitorService:
     def is_running(self) -> bool:
         """Check if the service is currently running."""
         return self._running
+
+    def get_status(self) -> dict:
+        hl_status = (
+            self.hyperliquid_listener.get_status()
+            if self.hyperliquid_listener
+            else None
+        )
+        sol_status = self.solana_listener.get_status() if self.solana_listener else None
+        return {
+            "service_running": self._running,
+            "hyperliquid": hl_status,
+            "solana": sol_status,
+        }

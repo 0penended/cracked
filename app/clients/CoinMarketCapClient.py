@@ -72,9 +72,6 @@ class CoinMarketCapClient:
             response.raise_for_status()
             data = response.json()
             api_data = data.get("data", {})
-            print("!!!uncached_symbols!!!", uncached_symbols)
-            print("!!!cached_data!!!", cached_data)
-            print("!!!token_cache!!!", token_cache.get_stats().get("cache_keys"))
 
             # Cache each symbol individually and add to result
             for symbol in uncached_symbols:
