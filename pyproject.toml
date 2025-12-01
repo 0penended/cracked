@@ -7,7 +7,7 @@ license = "MIT"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.12,<4.0"
 uvicorn = "^0.18.2"
 fastapi = "^0.79.1"
 pydantic = { version = "^1.9", extras = ["email", "dotenv"] }
@@ -28,6 +28,7 @@ hyperliquid-python-sdk = "^0.16.0"
 httpx = ">=0.28.0"
 python-telegram-bot = "^22.0"
 google-cloud-bigquery = "^3.35.1"
+pandas = "^2.3.3"
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"

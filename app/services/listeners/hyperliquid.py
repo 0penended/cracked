@@ -210,9 +210,7 @@ class HyperliquidListener(ChainListener):
                     break
 
                 now = time.time()
-                stale = (
-                    self._last_event_ts is None or (now - self._last_event_ts) > 3600
-                )
+                stale = self._last_event_ts is None or (now - self._last_event_ts) > 300
                 if stale:
                     logger.warning(
                         "⚠️ Hyperliquid heartbeat: no events recently; reconnecting..."
