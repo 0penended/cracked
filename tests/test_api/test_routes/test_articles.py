@@ -4,13 +4,13 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from starlette import status
 
-from app.db.errors import EntityDoesNotExist
-from app.db.repositories.articles import ArticlesRepository
-from app.db.repositories.profiles import ProfilesRepository
-from app.db.repositories.users import UsersRepository
-from app.models.domain.articles import Article
-from app.models.domain.users import UserInDB
-from app.models.schemas.articles import ArticleInResponse, ListOfArticlesInResponse
+from wallet_tracker.db.errors import EntityDoesNotExist
+from wallet_tracker.db.repositories.articles import ArticlesRepository
+from wallet_tracker.db.repositories.profiles import ProfilesRepository
+from wallet_tracker.db.repositories.users import UsersRepository
+from wallet_tracker.models.domain.articles import Article
+from wallet_tracker.models.domain.users import UserInDB
+from wallet_tracker.models.schemas.articles import ArticleInResponse, ListOfArticlesInResponse
 
 pytestmark = pytest.mark.asyncio
 

@@ -1,0 +1,25 @@
+# Price Action Trading Configuration
+
+symbols:
+  - BTC/USDT
+  - ETH/USDT
+  - SOL/USDT
+
+timeframe: "4h"
+history_lookback_days: 365
+
+thresholds:
+  rsi_min: 30.0
+  rsi_max: 70.0
+  vol_rel_min: 1.2
+  max_distance_to_support_pct: 0.05  # 5% max distance to support
+  obv_slope_min: 0.0
+  require_trend: true
+
+risk:
+  account_risk_pct: 0.02  # 2% risk per trade
+  sl_atr_mult: 1.5
+  tp_rr: 2.0  # 2:1 reward to risk
+  max_leverage: 10.0
+  min_leverage: 1.0
+

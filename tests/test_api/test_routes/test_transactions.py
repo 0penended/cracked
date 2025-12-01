@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
-from app.models.domain.transactions import Transaction
+from wallet_tracker.models.domain.transactions import Transaction
 
 
 @pytest.mark.asyncio

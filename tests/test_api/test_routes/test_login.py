@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
-from app.models.domain.users import UserInDB
+from wallet_tracker.models.domain.users import UserInDB
 
 pytestmark = pytest.mark.asyncio
 

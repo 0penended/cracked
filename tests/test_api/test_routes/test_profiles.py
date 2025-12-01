@@ -4,10 +4,10 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from starlette import status
 
-from app.db.repositories.profiles import ProfilesRepository
-from app.db.repositories.users import UsersRepository
-from app.models.domain.users import UserInDB
-from app.models.schemas.profiles import ProfileInResponse
+from wallet_tracker.db.repositories.profiles import ProfilesRepository
+from wallet_tracker.db.repositories.users import UsersRepository
+from wallet_tracker.models.domain.users import UserInDB
+from wallet_tracker.models.schemas.profiles import ProfileInResponse
 
 pytestmark = pytest.mark.asyncio
 

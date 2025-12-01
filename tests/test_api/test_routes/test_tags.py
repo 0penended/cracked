@@ -3,7 +3,7 @@ from asyncpg.pool import Pool
 from fastapi import FastAPI
 from httpx import AsyncClient
 
-from app.db.repositories.tags import TagsRepository
+from wallet_tracker.db.repositories.tags import TagsRepository
 
 pytestmark = pytest.mark.asyncio
 

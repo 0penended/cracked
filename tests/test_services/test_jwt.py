@@ -3,8 +3,8 @@ from datetime import timedelta
 import jwt
 import pytest
 
-from app.models.domain.users import UserInDB
-from app.services.jwt import (
+from wallet_tracker.models.domain.users import UserInDB
+from wallet_tracker.services.jwt import (
     ALGORITHM,
     create_access_token_for_user,
     create_jwt_token,
