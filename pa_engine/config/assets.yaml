@@ -1,0 +1,6 @@
+# Trading symbols to monitor
+# For Hyperliquid: use coin names (e.g., "BTC", "ETH", "SOL")
+# For CCXT exchanges: use trading pairs (e.g., "BTC/USDT", "ETH/USDT")
+
+symbols:
+  - "BTC"

@@ -1,0 +1,20 @@
+# Trading signal thresholds
+
+thresholds:
+  rsi_min: 25
+  rsi_max: 35.0
+  vol_rel_min: 1.2
+  max_distance_to_support_pct: 0.05 # 5% max distance to support
+  obv_slope_min: 0.0
+  require_trend: true # EMA50 > EMA200 required
+
+risk:
+  account_risk_pct: 1.0 # Risk 1% of account per trade
+  sl_atr_mult: 0.5 # Stop loss = support - 0.5 * ATR
+  tp_rr: 2.0 # Take profit = 2R (2x risk)
+  max_leverage: 10.0
+  min_leverage: 1.0
+
+app:
+  timeframe: "4h"
+  history_lookback_days: 365

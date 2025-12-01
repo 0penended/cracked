@@ -91,7 +91,7 @@ class CoreTransactionPipeline:
                     result = await strategy.evaluate(event)
                     if result:
                         logger.info(
-                            f"✅ Strategy {strategy.description} matched with confidence {result.confidence}"
+                            f"✅ Strategy {strategy.description} matched with confidence {result.confidence}: ${result.explanation}"
                         )
                         strategy_results.append(result)
                 except Exception as e:
