@@ -1,11 +1,7 @@
 """Technical indicator calculations."""
 
 import pandas as pd
-
-try:
-    import pandas_ta as ta
-except ImportError:
-    raise ImportError("pandas_ta is required. Install with: pip install pandas-ta")
+import pandas_ta_classic as ta
 
 
 def compute_indicators(candles: list) -> pd.DataFrame:
@@ -40,7 +36,7 @@ def compute_indicators(candles: list) -> pd.DataFrame:
     df["ema_200"] = ta.ema(df["close"], length=200)
 
     # RSI
-    df["rsi"] = ta.rsi(df["close"], length=14)
+    df["rsi"] = ta.rsi(df["close"], length=21)
 
     # Volume vs median over last N candles
     N = 20
@@ -49,7 +45,7 @@ def compute_indicators(candles: list) -> pd.DataFrame:
 
     # OBV + slope over last K candles
     df["obv"] = ta.obv(df["close"], df["volume"])
-    K = 10
+    K = 30
     df["obv_slope"] = df["obv"] - df["obv"].shift(K)
 
     # ATR (for SL/TP sizing)
