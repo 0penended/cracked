@@ -1,0 +1,1 @@
+from wallet_tracker.models.domain.unified_transaction_event import UnifiedTransactionEvent

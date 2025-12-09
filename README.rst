@@ -44,7 +44,10 @@ Then run the following commands to bootstrap your environment with ``poetry``: :
     git clone https://github.com/nsidnev/fastapi-realworld-example-app
     cd fastapi-realworld-example-app
     poetry install
-    poetry shell
+    eval $(poetry env activate)
+    
+    # Alternative: Use poetry run for individual commands
+    # poetry run python app/main.py
 
 Then create ``.env`` file (or rename and modify ``.env.example``) in project root and set environment variables for application: ::
 
@@ -55,8 +58,8 @@ Then create ``.env`` file (or rename and modify ``.env.example``) in project roo
 
 To run the web application in debug use::
 
-    alembic upgrade head
-    uvicorn app.main:app --reload
+    poetry run alembic upgrade head
+    poetry run uvicorn app.main:app --reload
 
 Development Scripts
 ------------------

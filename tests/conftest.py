@@ -6,11 +6,11 @@ from asyncpg.pool import Pool
 from fastapi import FastAPI
 from httpx import AsyncClient
 
-from app.db.repositories.articles import ArticlesRepository
-from app.db.repositories.users import UsersRepository
-from app.models.domain.articles import Article
-from app.models.domain.users import UserInDB
-from app.services import jwt
+from wallet_tracker.db.repositories.articles import ArticlesRepository
+from wallet_tracker.db.repositories.users import UsersRepository
+from wallet_tracker.models.domain.articles import Article
+from wallet_tracker.models.domain.users import UserInDB
+from wallet_tracker.services import jwt
 from tests.fake_asyncpg_pool import FakeAsyncPGPool
 
 environ["APP_ENV"] = "test"
@@ -18,7 +18,7 @@ environ["APP_ENV"] = "test"
 
 @pytest.fixture
 def app() -> FastAPI:
-    from app.main import get_application  # local import for testing purpose
+    from main import get_application  # local import for testing purpose
 
     return get_application()
 
@@ -47,7 +47,7 @@ async def client(initialized_app: FastAPI) -> AsyncClient:
 
 @pytest.fixture
 def authorization_prefix() -> str:
-    from app.core.config import get_app_settings
+    from wallet_tracker.core.config import get_app_settings
 
     settings = get_app_settings()
     jwt_token_prefix = settings.jwt_token_prefix

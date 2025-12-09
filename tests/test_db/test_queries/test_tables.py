@@ -1,4 +1,4 @@
-from app.db.queries.tables import TypedTable
+from wallet_tracker.db.queries.tables import TypedTable
 
 
 def test_typed_table_uses_explicit_name() -> None:

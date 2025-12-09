@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app.models.domain.rwmodel import convert_datetime_to_realworld
+from wallet_tracker.models.domain.rwmodel import convert_datetime_to_realworld
 
 
 def test_api_datetime_is_in_realworld_format() -> None:
